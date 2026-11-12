@@ -1,0 +1,13 @@
+{
+  "name": "tiopato-app",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": { "test": "node --test" },
+  "dependencies": {
+    "@aparajita/capacitor-secure-storage": "^8.0.1",
+    "@capacitor-community/admob": "^8.3.0",
+    "@capacitor/core": "^8.6.2",
+    "@capgo/native-purchases": "^8.9.11"
+  }
+}

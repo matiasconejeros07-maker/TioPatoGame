@@ -1,0 +1,10 @@
+{
+  "name": "tiopato-server",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "main": "src/index.js",
+  "scripts": { "test": "node --test", "dev": "wrangler dev", "deploy": "wrangler deploy" },
+  "dependencies": { "@upstash/redis": "^1.41.0", "hono": "^4.13.18", "postgres": "^3.4.9" },
+  "devDependencies": { "wrangler": "^4.161.0" }
+}

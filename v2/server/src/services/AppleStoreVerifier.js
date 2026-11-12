@@ -1,0 +1,50 @@
+// Valida una compra de iOS preguntándole directamente a Apple (App Store Server API).
+// No se confía en nada de lo que mande el teléfono salvo el id de la transacción: los datos de la compra
+// los entrega Apple por HTTPS, por eso un recibo falso (IAP Cracker y similares) no pasa.
+import { decodeJwt, signJwt } from './jwt.js';
+import { InvalidPurchaseError, StoreUnavailableError } from './errors.js';
+
+const HOSTS = [
+  ['production', 'https://api.storekit.itunes.apple.com'],
+  ['sandbox', 'https://api.storekit-sandbox.itunes.apple.com'],
+];
+
+export class AppleStoreVerifier {
+  /**
+   * @param {{ issuerId: string, keyId: string, privateKey: string, bundleId: string, allowSandbox?: boolean,
+   *           fetch?: typeof fetch, now?: () => number }} config  credenciales de App Store Connect → Usuarios y acceso → Integraciones
+   */
+  constructor(config) { this.config = { fetch: (...a) => fetch(...a), now: Date.now, allowSandbox: false, ...config }; }
+
+  #token() {
+    const { issuerId, keyId, privateKey, bundleId, now } = this.config;
+    const iat = Math.floor(now() / 1000);
+    return signJwt('ES256', privateKey, { kid: keyId }, { iss: issuerId, iat, exp: iat + 300, aud: 'appstoreconnect-v1', bid: bundleId });
+  }
+
+  /** @returns {Promise<{ transactionId: string, productId: string, quantity: number, environment: string, receipt: object }>} */
+  async verify({ transactionId, productId, userId }) {
+    if (!/^\d{1,32}$/.test(transactionId ?? '')) throw new InvalidPurchaseError('id de transacción inválido');
+    const authorization = 'Bearer ' + (await this.#token());
+    for (const [environment, host] of HOSTS) {
+      if (environment === 'sandbox' && !this.config.allowSandbox) break;
+      let response;
+      try { response = await this.config.fetch(`${host}/inApps/v1/transactions/${transactionId}`, { headers: { authorization } }); }
+      catch (e) { throw new StoreUnavailableError('Apple no responde'); }
+      if (response.status === 404) continue;                     // no existe en este ambiente: se prueba el siguiente
+      if (!response.ok) throw new StoreUnavailableError(`Apple respondió ${response.status}`);
+
+      const tx = decodeJwt((await response.json()).signedTransactionInfo).payload;
+      if (tx.bundleId !== this.config.bundleId) throw new InvalidPurchaseError('la compra es de otra app');
+      if (tx.productId !== productId) throw new InvalidPurchaseError('la compra es de otro producto');
+      if (tx.type !== 'Consumable') throw new InvalidPurchaseError('el producto no es consumible');
+      if (tx.revocationDate) throw new InvalidPurchaseError('la compra fue reembolsada');
+      if (tx.appAccountToken?.toLowerCase() !== userId) throw new InvalidPurchaseError('la compra es de otra cuenta');
+      return { transactionId: String(tx.transactionId), productId, quantity: tx.quantity ?? 1, environment, receipt: tx };
+    }
+    throw new InvalidPurchaseError('Apple no conoce esa transacción');
+  }
+
+  /** En iOS la transacción la cierra la app (finishTransaction) cuando el servidor confirma la entrega. */
+  async close() {}
+}

@@ -1,0 +1,34 @@
+name: Pruebas V2
+on:
+  push:
+    branches: [main]
+    paths: ['v2/**', '.github/workflows/v2.yml']
+  pull_request:
+    paths: ['v2/**', '.github/workflows/v2.yml']
+jobs:
+  v2:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar
+        working-directory: v2
+        run: npm ci --no-audit --no-fund
+      - name: App, servidor y migración (modelos, controladores, API contra PostgreSQL)
+        working-directory: v2
+        run: npm test
+      - name: El Worker de Cloudflare empaqueta
+        working-directory: v2/server
+        run: npx wrangler deploy --dry-run --outdir /tmp/worker

@@ -1,0 +1,8 @@
+{
+  "name": "tiopato-migracion",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": { "test": "node --test" },
+  "dependencies": { "postgres": "^3.4.9" }
+}

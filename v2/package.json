@@ -1,0 +1,8 @@
+{
+  "name": "tiopato-v2",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "workspaces": ["app", "server", "migracion"],
+  "scripts": { "test": "npm test --workspaces" }
+}

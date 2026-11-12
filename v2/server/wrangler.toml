@@ -1,0 +1,17 @@
+name = "tiopato-api"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+APP_ID = "cl.tiopato.juego"            # bundle id (iOS) y nombre de paquete (Android)
+FIREBASE_PROJECT_ID = "juegotiopato"
+ALLOW_SANDBOX = "false"                # "true" solo en el ambiente de pruebas y mientras Apple revisa la app
+APPLE_ISSUER_ID = ""
+APPLE_KEY_ID = ""
+GOOGLE_CLIENT_EMAIL = ""
+UPSTASH_REDIS_REST_URL = ""
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = ""                                # wrangler hyperdrive create tiopato --connection-string="postgres://…"
