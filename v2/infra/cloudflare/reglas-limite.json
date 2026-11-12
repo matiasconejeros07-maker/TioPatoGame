@@ -1,0 +1,17 @@
+{
+  "description": "Gánale al Tío Pato · límites de frecuencia (fase http_ratelimit)",
+  "rules": [
+    {
+      "description": "Inicio de sesión: 20 intentos por minuto por IP; si se pasa, 10 minutos fuera",
+      "action": "block",
+      "expression": "(http.host eq \"__API_HOST__\" and starts_with(http.request.uri.path, \"/auth/\"))",
+      "ratelimit": { "characteristics": ["cf.colo.id", "ip.src"], "period": 60, "requests_per_period": 20, "mitigation_timeout": 600 }
+    },
+    {
+      "description": "Toda la API: 300 peticiones por minuto por IP",
+      "action": "block",
+      "expression": "(http.host eq \"__API_HOST__\")",
+      "ratelimit": { "characteristics": ["cf.colo.id", "ip.src"], "period": 60, "requests_per_period": 300, "mitigation_timeout": 60 }
+    }
+  ]
+}

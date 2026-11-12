@@ -1,6 +1,6 @@
 // Compras con dinero real. El teléfono cobra (StoreKit / Play Billing), pero quien entrega es el servidor,
 // después de validar la compra con Apple o Google. La app nunca se suma power-ups por su cuenta.
-import { PACKS, PERMANENT } from '../../../shared/catalog.js';
+import { PACKS, PERMANENT, Entitlement } from '../../../shared/catalog.js';
 import { ApiError } from '../services/ApiClient.js';
 
 export const PurchaseOutcome = Object.freeze({ DELIVERED: 'delivered', CANCELLED: 'cancelled', PENDING: 'pending', REJECTED: 'rejected' });
@@ -25,7 +25,7 @@ export class PurchaseController {
     const products = await this.store.getProducts([...Object.keys(PACKS), ...Object.keys(PERMANENT)]);
     const from = (catalog) => products.filter((p) => Object.hasOwn(catalog, p.productId))
       .map((p) => ({ ...catalog[p.productId], productId: p.productId, priceLabel: p.priceLabel }));
-    return { packs: from(PACKS), permanent: from(PERMANENT).filter((o) => !this.entitlements.has(o.entitlement)) };
+    return { packs: from(PACKS), permanent: from(PERMANENT).filter((o) => !this.entitlements.owned.includes(o.entitlement)) };
   }
 
   /** Trae del servidor lo que la cuenta tiene comprado (al abrir la app). */
@@ -34,10 +34,20 @@ export class PurchaseController {
   /** Ajustes → «Restaurar compras» (lo exige Apple para las compras permanentes). */
   async restore() {
     for (const purchase of await this.store.restorablePurchases()) if (Object.hasOwn(PERMANENT, purchase.productId)) await this.#deliver(purchase);
-    return this.entitlements.adFree;
+    return this.entitlements.owned.includes(Entitlement.NO_ADS);
   }
 
-  #apply(owned) { this.inventory.replace(owned.powerups); this.entitlements.replace(owned.entitlements); }
+  /** Tienda → un power-up por pesos del juego. @returns {Promise<{ ok: boolean, balance?: number, reason?: string }>} */
+  async buyWithCoins(powerupId) {
+    try {
+      const result = await this.api.request('POST', '/purchases/powerups', { powerupId });
+      this.#apply(result);
+      return { ok: true, balance: result.balance };
+    } catch (error) { return { ok: false, reason: error instanceof ApiError ? error.code : 'sin_conexion' }; }
+  }
+
+  /** Lo que respondió el servidor pasa a ser lo que la app muestra. */
+  #apply(owned) { this.inventory.quantities = owned.powerups; this.entitlements.owned = owned.entitlements; }
 
   async buy(productId) {
     if (this.#busy) return PurchaseOutcome.PENDING;          // toque doble en «Comprar»

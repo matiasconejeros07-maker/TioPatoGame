@@ -5,12 +5,27 @@ import { HttpError, InvalidPurchaseError } from './errors.js';
 
 export class PurchaseService {
   /**
-   * @param {{ purchases: import('../models/PurchaseRepository.js').PurchaseRepository,
+   * @param {{ purchases: import('../repositories/PurchaseRepository.js').PurchaseRepository,
    *           verifiers: Record<'apple'|'google', { verify(input: object): Promise<object>, close(verified: object): Promise<void> }> }} deps
    */
   constructor({ purchases, verifiers }) { this.purchases = purchases; this.verifiers = verifiers; }
 
   owned(userId) { return this.purchases.owned(userId); }
+
+  /** Un power-up por pesos del juego. */
+  async buyWithCoins(userId, powerupId) {
+    const { balance } = await this.purchases.buyWithCoins(userId, powerupId);
+    return { balance, ...(await this.purchases.owned(userId)) };
+  }
+
+  /** Aviso de reembolso de Apple: no se le cree al aviso; se le pregunta a Apple si esa transacción está revocada. */
+  async refundApple(transactionId) {
+    if (!(await this.verifiers.apple.isRevoked(transactionId))) return false;
+    return this.purchases.refund({ store: 'apple', transactionId: String(transactionId) });
+  }
+
+  /** Aviso de compra anulada de Google (ya autenticado por el controlador). */
+  refundGoogle({ orderId, purchaseToken }) { return this.purchases.refund({ store: 'google', transactionId: orderId, purchaseToken }); }
 
   async redeem(userId, { store, productId, transactionId, purchaseToken }) {
     const product = productOf(productId);

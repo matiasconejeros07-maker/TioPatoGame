@@ -1,63 +1,9 @@
 // La API de punta a punta contra un PostgreSQL real; las tiendas y Firebase se reemplazan por dobles.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createApp } from '../src/app.js';
-import { SessionRepository } from '../src/models/SessionRepository.js';
-import { PurchaseRepository } from '../src/models/PurchaseRepository.js';
-import { AccountRepository } from '../src/models/AccountRepository.js';
-import { PurchaseService } from '../src/services/PurchaseService.js';
-import { MemoryNonceStore } from '../src/services/NonceStore.js';
-import { HttpError, InvalidPurchaseError, StoreUnavailableError } from '../src/services/errors.js';
-import { deriveSessionKey, newNonce, sign } from '../../shared/signature.js';
-import { createTestDatabase, hasDatabase } from '../../test-support/db.js';
+import { newNonce } from '../../shared/signature.js';
+import { setup, skip, PACK, NO_ADS } from '../testing/setup.js';
 
-const MASTER = 'secreto-maestro-de-prueba';
-const NO_ADS = 'cl.tiopato.sinanuncios';
-const PACK = 'cl.tiopato.pack.inicial';       // entrega slow ×3 y wide ×2
-
-/** Tienda de mentira: conoce las compras que se le «registran» y cuenta cuántas veces se cerró cada una. */
-class FakeStore {
-  known = new Map(); closed = []; failClose = false;
-  async verify({ transactionId, purchaseToken, productId, userId, consumable }) {
-    const tx = this.known.get(transactionId ?? purchaseToken);
-    if (!tx || tx.productId !== productId || (consumable && tx.userId !== userId)) throw new InvalidPurchaseError('desconocida');
-    return { transactionId: tx.orderId, productId, quantity: tx.quantity ?? 1, environment: 'production', receipt: { orderId: tx.orderId }, purchaseToken, consumable };
-  }
-  async close(verified) { if (this.failClose) throw new StoreUnavailableError('caída'); this.closed.push(verified.transactionId); }
-}
-
-async function setup(t) {
-  const db = await createTestDatabase();
-  t.after(() => db.drop());
-  const { sql } = db;
-  const clock = { now: Date.now() };
-  const stores = { apple: new FakeStore(), google: new FakeStore() };
-  const firebaseTokens = { async verify(token) { if (!token.startsWith('fb:')) throw new HttpError(401, 'sesion_antigua_invalida'); return token.slice(3); } };
-  const app = createApp({
-    masterSecret: MASTER, now: () => clock.now,
-    sessions: new SessionRepository(sql), nonces: new MemoryNonceStore(() => clock.now),
-    accounts: new AccountRepository(sql), firebaseTokens,
-    purchaseService: new PurchaseService({ purchases: new PurchaseRepository(sql), verifiers: stores }),
-  });
-
-  async function newPlayer(name, extra = {}) {
-    const [user] = await sql`INSERT INTO users ${sql({ display_name: name, ...extra })} RETURNING id`;
-    const [session] = await sql`INSERT INTO sessions (user_id, expires_at) VALUES (${user.id}, now() + interval '1 day') RETURNING id`;
-    const key = await deriveSessionKey(MASTER, session.id);
-    /** Petición firmada como la haría la app; `tamper` deja estropear algo antes de enviarla. */
-    async function call(method, path, data, tamper = (r) => r) {
-      const body = data === undefined ? '' : JSON.stringify(data);
-      const timestamp = String(clock.now), nonce = newNonce();
-      const req = tamper({ body, headers: { 'x-session': session.id, 'x-timestamp': timestamp, 'x-nonce': nonce, 'x-signature': await sign(key, body, timestamp, nonce) } });
-      const res = await app.request('/v2' + path, { method, headers: req.headers, body: method === 'GET' || method === 'DELETE' ? undefined : req.body });
-      return { status: res.status, json: res.status === 204 ? null : await res.json(), sent: req };
-    }
-    return { id: user.id, sessionId: session.id, call };
-  }
-  return { sql, app, clock, stores, newPlayer };
-}
-
-const skip = !hasDatabase && 'falta TEST_DATABASE_URL';
 
 test('firma: sin firma, con el cuerpo alterado, con el reloj desfasado o repetida, la petición se rechaza', { skip }, async (t) => {
   const { app, clock, stores, newPlayer } = await setup(t);
@@ -66,7 +12,7 @@ test('firma: sin firma, con el cuerpo alterado, con el reloj desfasado o repetid
   const purchase = { store: 'google', productId: PACK, purchaseToken: 'token-de-google-000000001' };
 
   assert.equal((await app.request('/v2/purchases', { method: 'POST', body: JSON.stringify(purchase) })).status, 401);
-  const forged = await ana.call('POST', '/purchases', purchase, (r) => ({ ...r, body: r.body.replace('inicial', 'mega') }));
+  const forged = await ana.call('POST', '/purchases', purchase, (r) => ({ ...r, body: r.body.replace('pack1', 'pack4') }));
   assert.deepEqual([forged.status, forged.json.error], [401, 'firma_invalida']);
 
   const good = await ana.call('POST', '/purchases', purchase);
@@ -103,7 +49,7 @@ test('compras: se entregan una sola vez, solo si la tienda las confirma y solo a
   const stolen = await beto.call('POST', '/purchases', purchase);
   assert.equal(stolen.status, 422);
   // producto que no existe en el catálogo
-  assert.equal((await ana.call('POST', '/purchases', { ...purchase, productId: 'cl.tiopato.pack.infinito' })).status, 422);
+  assert.equal((await ana.call('POST', '/purchases', { ...purchase, productId: 'com.miempresa.pingpong.pack99' })).status, 422);
 
   const ledger = await sql`SELECT powerup_id, delta, reason FROM powerup_ledger WHERE user_id = ${ana.id} ORDER BY powerup_id`;
   assert.deepEqual(ledger.map((r) => [r.powerup_id, r.delta, r.reason]), [['slow', 3, 'purchase'], ['wide', 2, 'purchase']]);
@@ -184,7 +130,7 @@ test('cuenta antigua: se enlaza una sola vez y conserva saldo, racha y lo compra
 test('eliminar cuenta: borra todo lo del jugador, conserva la compra sin dueño y libera el dispositivo', { skip }, async (t) => {
   const { sql, stores, newPlayer } = await setup(t);
   const ana = await newPlayer('Ana', { name_key: 'ana' });
-  await sql`INSERT INTO wallets (user_id, earned) VALUES (${ana.id}, 500)`;
+  await sql`UPDATE wallets SET earned = 500 WHERE user_id = ${ana.id}`;
   await sql`INSERT INTO devices (hardware_id, platform, user_id) VALUES ('hw-ana', 'android', ${ana.id})`;
   stores.google.known.set('token-de-google-000000001', { orderId: 'GPA.1', productId: PACK, userId: ana.id });
   await ana.call('POST', '/purchases', { store: 'google', productId: PACK, purchaseToken: 'token-de-google-000000001' });
@@ -202,7 +148,9 @@ test('cambiar nombre: único, validado y una sola vez cada 30 días', { skip }, 
   const { sql, newPlayer } = await setup(t);
   const ana = await newPlayer('Ana', { name_key: 'ana' }), beto = await newPlayer('Beto', { name_key: 'beto' });
 
-  for (const name of ['ab', 'NombreDemasiadoLargo', '¡¡¡!!!', 42]) assert.equal((await ana.call('PUT', '/account/name', { name })).status, 422, String(name));
+  for (const name of ['ab', 'NombreDemasiadoLargo', '¡¡¡!!!', 42]) assert.equal((await ana.call('PUT', '/account/name', { name })).json.error, 'nombre_invalido', String(name));
+  for (const name of ['El Weón', 'c.t.m', 'xXqliaoXx', 'p1c0', 'Pichula7']) assert.equal((await ana.call('PUT', '/account/name', { name })).json.error, 'nombre_ofensivo', name);
+  assert.equal((await sql`SELECT display_name FROM users WHERE id = ${ana.id}`)[0].display_name, 'Ana', 'un nombre rechazado no gasta el cambio');
   const taken = await ana.call('PUT', '/account/name', { name: 'BÉTO' });
   assert.deepEqual([taken.status, taken.json.error], [409, 'nombre_ocupado'], 'mayúsculas y tildes no hacen un nombre distinto');
 

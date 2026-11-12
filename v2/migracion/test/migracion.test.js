@@ -50,12 +50,12 @@ test('cargar: todo llega a PostgreSQL, se puede repetir y no pisa las cuentas ya
   assert.deepEqual(first.totals, data.totals);
 
   const [beto] = await sql`
-    SELECT u.id, u.status, u.golden_frame, w.earned - w.spent AS balance, s.days, s.streak_x4, sc.best, sc.played_ms
+    SELECT u.id, u.status, u.golden_frame, w.earned - w.spent AS balance, s.days, s.streak_x4, sc.best, sc.mode, u.played_ms
     FROM users u JOIN wallets w ON w.user_id = u.id JOIN streaks s ON s.user_id = u.id JOIN scores sc ON sc.user_id = u.id
     WHERE u.firebase_uid = 'uidBeto'`;
   assert.equal(beto.status, 'legacy_unclaimed');
   assert.equal(Number(beto.balance), 149500000);
-  assert.deepEqual([beto.days, beto.streak_x4, beto.best, Number(beto.played_ms)], [31, 2, 431, 86400000]);
+  assert.deepEqual([beto.days, beto.streak_x4, beto.best, beto.mode, Number(beto.played_ms)], [31, 2, 431, 'classic', 86400000]);
   const [{ periods }] = await sql`SELECT periods FROM stats WHERE user_id = (SELECT id FROM users WHERE firebase_uid = 'uidAna')`;
   assert.equal(periods.wm, 120);
 
@@ -72,8 +72,8 @@ test('cargar: todo llega a PostgreSQL, se puede repetir y no pisa las cuentas ya
   assert.equal((await sql`SELECT count(*)::int AS n FROM users`)[0].n, 3, 'repetir la carga no duplica cuentas');
 
   const commands = await leaderboardCommands(sql);
-  assert.ok(commands.some((c) => c[0] === 'ZADD' && c[1] === 'lb:best' && c[2] === '431' && c[3] === beto.id));
-  assert.ok(commands.some((c) => c.join(' ') === `ZADD lb:m:202611 431 ${beto.id}`));
+  assert.ok(commands.some((c) => c[0] === 'ZADD' && c[1] === 'lb:classic:best' && c[2] === '431' && c[3] === beto.id));
+  assert.ok(commands.some((c) => c.join(' ') === `ZADD lb:classic:m:202611 431 ${beto.id}`));
 });
 
 test('cargar: con datos anómalos no se guarda nada', { skip: !hasDatabase && 'falta TEST_DATABASE_URL' }, async (t) => {

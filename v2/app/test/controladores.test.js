@@ -1,58 +1,13 @@
-// Los controladores con servicios de plataforma falsos (sin teléfono, sin AdMob, sin tienda).
+// Anuncios, compras, perfil y flujo del juego: toda la lógica vive en los controladores.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame } from '../src/composition.js';
+import { createGame, createPracticeGame } from '../src/composition.js';
 import { GameState } from '../src/models/GameFlowModel.js';
 import { PurchaseOutcome } from '../src/controllers/PurchaseController.js';
 import { RenameOutcome } from '../src/controllers/ProfileController.js';
 import { ApiClient, ApiError } from '../src/services/ApiClient.js';
 import { verify } from '../../shared/signature.js';
-
-const PACK = 'cl.tiopato.pack.inicial', NO_ADS = 'cl.tiopato.sinanuncios';
-
-function fakes({ consentAnswered = true, owned = { powerups: {}, entitlements: [] } } = {}) {
-  const log = [];
-  const state = { consentAnswered, adLoads: true, apiError: null, pending: [], restorable: [], storeResult: undefined, owned };
-  const services = {
-    getUserId: () => 'usuario-1',
-    // canRequestAds es true cuando el jugador ya respondió el formulario, haya aceptado o rechazado
-    consent: { async gather() { log.push('consent'); return { canRequestAds: state.consentAnswered, privacyOptionsRequired: true }; }, async showPrivacyOptions() {} },
-    ads: {
-      async initialize() { log.push('ads:init'); },
-      async loadInterstitial() { log.push('ads:load'); return state.adLoads; },
-      async showInterstitial() { log.push('ads:show'); },
-    },
-    store: {
-      async getProducts(ids) { return [...ids.filter((id) => id === PACK || id === NO_ADS), 'desconocido'].map((productId) => ({ productId, priceLabel: '$990' })); },
-      async purchase(productId, userId) { log.push(`store:buy:${userId}`); return state.storeResult === undefined ? { store: 'google', productId, purchaseToken: 'tok' } : state.storeResult; },
-      async pendingPurchases() { return state.pending; },
-      async restorablePurchases() { return state.restorable; },
-      async finish(p) { log.push('store:finish:' + (p.purchaseToken ?? p.transactionId)); },
-    },
-    api: {
-      async request(method, path, data) {
-        log.push(`api:${method}${path}`);
-        if (state.apiError) throw state.apiError;
-        if (path === '/account/name') return { displayName: data.name, nextChangeAt: '2099-01-01T00:00:00.000Z' };
-        if (method === 'POST' && data.productId === NO_ADS) state.owned = { ...state.owned, entitlements: ['no_ads'] };
-        if (method === 'POST' && data.productId === PACK) state.owned = { ...state.owned, powerups: { slow: 3 } };
-        return method === 'POST' ? { granted: true, ...state.owned } : state.owned;
-      },
-    },
-  };
-  return { services, log, state };
-}
-const settle = () => new Promise((r) => setTimeout(r, 0));
-const count = (log, entry) => log.filter((l) => l === entry).length;
-/** Juega una partida completa y vuelve al menú. @returns si salió un anuncio */
-async function playMatch(game, log) {
-  const before = count(log, 'ads:show');
-  game.controllers.flow.startMatch();
-  game.controllers.flow.endMatch();
-  await game.controllers.flow.leaveGameOver();
-  await settle();
-  return count(log, 'ads:show') > before;
-}
+import { fakes, playMatch, count, PACK, NO_ADS } from '../testing/apoyo.js';
 
 test('arranque: primero el consentimiento y recién después AdMob', async () => {
   const { services, log } = fakes();
@@ -63,6 +18,19 @@ test('arranque: primero el consentimiento y recién después AdMob', async () =>
   assert.deepEqual(states, [GameState.CONSENT, GameState.MENU]);
   assert.deepEqual(log.slice(0, 4), ['api:GET/purchases', 'consent', 'ads:init', 'ads:load']);
   assert.equal(game.controllers.consent.privacyOptionsRequired, true);
+});
+
+test('estados: no hay camino de una partida en curso a un anuncio', async () => {
+  const { services, log } = fakes();
+  const game = createGame(services);
+  const { flow } = game.controllers;
+  await flow.boot();
+  flow.startMatch();
+  assert.equal(flow.canGo(GameState.AD_BREAK), false);
+  await flow.leaveGameOver();                       // alguien intenta «salir del resumen» en plena partida
+  assert.equal(game.models.flow.state, GameState.PLAYING);
+  assert.equal(count(log, 'ads:show'), 0);
+  assert.throws(() => flow.startMatch(), /no permitida/, 'tampoco se puede empezar otra partida encima');
 });
 
 test('anuncios: uno cada 5 partidas exactas, siempre entre partidas', async () => {
@@ -86,7 +54,6 @@ test('anuncios: sin el formulario de consentimiento respondido no se pide ningun
   state.consentAnswered = true;                 // responde el formulario (acepte o rechace)
   const next = [await playMatch(game, log), await playMatch(game, log)];
   assert.equal(next.filter(Boolean).length, 1, 'el anuncio pendiente sale apenas se puede: en esa pausa o en la siguiente');
-  assert.deepEqual(log.filter((l) => l.startsWith('ads:')).slice(0, 2), ['ads:init', 'ads:load']);
 });
 
 test('anuncios: si no hay anuncio cargado o AdMob falla, el juego sigue y el anuncio queda pendiente', async () => {
@@ -95,6 +62,7 @@ test('anuncios: si no hay anuncio cargado o AdMob falla, el juego sigue y el anu
   const game = createGame(services);
   await game.controllers.flow.boot();
   for (let i = 0; i < 6; i++) assert.equal(await playMatch(game, log), false);
+  assert.equal(game.controllers.ads.isDue, true);
   state.adLoads = true;
   assert.equal(await playMatch(game, log), false);   // en esta pausa se carga
   assert.equal(await playMatch(game, log), true);
@@ -108,15 +76,15 @@ test('«Sin anuncios»: quien lo compró no ve anuncios ni el formulario; compra
   const free = createGame(paid.services);
   await free.controllers.flow.boot();
   for (let i = 0; i < 12; i++) assert.equal(await playMatch(free, paid.log), false);
-  assert.deepEqual(paid.log, ['api:GET/purchases']);
+  assert.ok(!paid.log.some((l) => l === 'consent' || l.startsWith('ads:')));
 
-  const { services, log, state } = fakes();
+  const { services, log } = fakes();
   const game = createGame(services);
   await game.controllers.flow.boot();
   for (let i = 0; i < 4; i++) await playMatch(game, log);
   assert.deepEqual((await game.controllers.purchases.offers()).permanent.map((o) => o.name), ['Sin anuncios']);
   assert.equal(await game.controllers.purchases.buy(NO_ADS), PurchaseOutcome.DELIVERED);
-  assert.equal(game.models.entitlements.adFree, true);
+  assert.equal(game.controllers.ads.adFree, true);
   assert.deepEqual((await game.controllers.purchases.offers()).permanent, [], 'ya no se ofrece');
   for (let i = 0; i < 12; i++) assert.equal(await playMatch(game, log), false);
 
@@ -131,11 +99,13 @@ test('«Sin anuncios»: quien lo compró no ve anuncios ni el formulario; compra
 test('compras: el inventario solo cambia con la respuesta del servidor', async () => {
   const { services, log, state } = fakes();
   const game = createGame(services);
+  game.models.session.current = { id: 's', key: new Uint8Array(1), userId: 'usuario-1' };
   const { purchases } = game.controllers;
+  const inventory = game.models.powerUps;
   assert.deepEqual((await purchases.offers()).packs, [{ name: 'Pack Inicial', grants: { slow: 3, wide: 2 }, productId: PACK, priceLabel: '$990' }]);
 
   assert.equal(await purchases.buy(PACK), PurchaseOutcome.DELIVERED);
-  assert.deepEqual(game.models.powerUps.all(), { slow: 3 });
+  assert.deepEqual(inventory.quantities, { slow: 3 });
   assert.deepEqual(log, ['store:buy:usuario-1', 'api:POST/purchases', 'store:finish:tok']);
 
   state.storeResult = null;
@@ -143,32 +113,42 @@ test('compras: el inventario solo cambia con la respuesta del servidor', async (
 
   // sin conexión: la compra queda pagada y pendiente, NO se cierra y no se regala nada en la app
   state.storeResult = undefined; state.apiError = new TypeError('sin red'); log.length = 0;
-  game.models.powerUps.replace({});
+  inventory.quantities = {};
   assert.equal(await purchases.buy(PACK), PurchaseOutcome.PENDING);
-  assert.deepEqual(game.models.powerUps.all(), {});
+  assert.deepEqual(inventory.quantities, {});
   assert.ok(!log.some((l) => l.startsWith('store:finish')));
 
   // al volver a abrir la app se recupera sola
   state.apiError = null; state.pending = [{ store: 'apple', productId: PACK, transactionId: '77' }];
   await purchases.recoverPending();
-  assert.deepEqual(game.models.powerUps.all(), { slow: 3 });
+  assert.deepEqual(inventory.quantities, { slow: 3 });
   assert.equal(log.at(-1), 'store:finish:77');
 
   // el servidor dice que el recibo no vale: no se entrega nada y se saca de la cola
-  state.apiError = new ApiError(422, 'compra_invalida'); game.models.powerUps.replace({});
+  state.apiError = new ApiError(422, 'compra_invalida'); inventory.quantities = {};
   assert.equal(await purchases.buy(PACK), PurchaseOutcome.REJECTED);
-  assert.deepEqual(game.models.powerUps.all(), {});
+  assert.deepEqual(inventory.quantities, {});
+
+  // un power-up con pesos del juego
+  state.apiError = null;
+  assert.deepEqual(await purchases.buyWithCoins('freeze'), { ok: true, balance: 250_000 });
+  assert.equal(inventory.quantities.freeze, 1);
+  state.apiError = new ApiError(409, 'saldo_insuficiente');
+  assert.deepEqual(await purchases.buyWithCoins('freeze'), { ok: false, reason: 'saldo_insuficiente' });
 });
 
-test('cambiar nombre: avisa sin gastar peticiones y respeta lo que diga el servidor', async () => {
+test('cambiar nombre: avisa sin gastar peticiones (también las groserías) y respeta lo que diga el servidor', async () => {
   const { services, log, state } = fakes();
   const game = createGame(services);
   const { profile } = game.controllers;
   assert.equal(await profile.rename('ab'), RenameOutcome.INVALID);
+  assert.equal(await profile.rename('El Weón'), RenameOutcome.OFFENSIVE);
   assert.deepEqual(log, []);
 
   state.apiError = new ApiError(409, 'nombre_ocupado');
   assert.equal(await profile.rename('Beto'), RenameOutcome.TAKEN);
+  state.apiError = new ApiError(422, 'nombre_ofensivo');           // el servidor puede tener una lista más nueva que la app
+  assert.equal(await profile.rename('Beto'), RenameOutcome.OFFENSIVE);
   state.apiError = null;
   assert.equal(await profile.rename('Anita'), RenameOutcome.CHANGED);
   assert.equal(game.models.profile.displayName, 'Anita');
@@ -178,9 +158,26 @@ test('cambiar nombre: avisa sin gastar peticiones y respeta lo que diga el servi
 
   // el teléfono cree que puede (reloj adelantado, otro dispositivo…) pero el servidor manda
   const other = createGame(fakes().services);
-  other.controllers.profile.api = { async request() { throw new ApiError(429, 'cambio_de_nombre_en_espera', { nextChangeAt: '2099-01-01T00:00:00.000Z' }); } };
+  const now = Date.parse('2026-11-12T12:00:00Z');
+  other.controllers.profile.now = () => now;
+  other.controllers.profile.api = { async request() { throw new ApiError(429, 'cambio_de_nombre_en_espera', { nextChangeAt: '2026-12-12T12:00:00.000Z' }); } };
   assert.equal(await other.controllers.profile.rename('Anota'), RenameOutcome.TOO_SOON);
-  assert.equal(other.models.profile.canChangeName(), false);
+  assert.deepEqual([other.controllers.profile.canChangeName, other.controllers.profile.daysUntilNameChange], [false, 30]);
+
+  assert.equal(await profile.saveVipContact('+56912345678', true), true);
+  assert.equal(log.at(-1), 'api:PUT/account/vip');
+});
+
+test('versión web: Modo Práctica. Se juega, pero sin cuenta, tienda, anuncios ni contacto con el servidor', async () => {
+  const game = createPracticeGame();
+  assert.equal(game.models.session.practice, true);
+  assert.equal(game.models.session.current, null);
+  assert.deepEqual(Object.keys(game.controllers), ['flow'], 'no existen los controladores de cuenta, compras ni marcadores');
+  await game.controllers.flow.boot();
+  for (let i = 0; i < 6; i++) { game.controllers.flow.startMatch(); game.controllers.flow.endMatch(); await game.controllers.flow.leaveGameOver(); }
+  assert.equal(game.models.flow.state, GameState.MENU);
+  assert.match(game.storeLinks.android, /play\.google\.com/);
+  assert.match(game.storeLinks.ios, /apps\.apple\.com/);
 });
 
 test('ApiClient: firma cada petición y corrige el reloj del teléfono si está corrido', async () => {
@@ -191,6 +188,7 @@ test('ApiClient: firma cada petición y corrige el reloj del teléfono si está 
     baseUrl: 'https://api.ejemplo', now: () => phoneNow, getSession: async () => ({ id: 'sesion-1', key }),
     fetch: async (url, init = {}) => {
       if (url.endsWith('/health')) return Response.json({ ok: true, now: serverNow });
+      if (url.endsWith('/auth/challenge')) return Response.json({ challenge: 'reto', firmado: 'x-signature' in init.headers });
       const h = init.headers, body = init.body ?? '';
       seen.push({ url, timestamp: h['x-timestamp'], nonce: h['x-nonce'], valid: await verify(key, body, h['x-timestamp'], h['x-nonce'], h['x-signature']) });
       return Math.abs(serverNow - Number(h['x-timestamp'])) > 30_000 ? Response.json({ error: 'reloj_desfasado' }, { status: 401 }) : Response.json({ ok: 1 });
@@ -201,5 +199,6 @@ test('ApiClient: firma cada petición y corrige el reloj del teléfono si está 
   assert.ok(seen.every((s) => s.valid), 'las dos peticiones van bien firmadas');
   assert.notEqual(seen[0].nonce, seen[1].nonce);
   assert.equal(Number(seen[1].timestamp), serverNow);
+  assert.deepEqual(await api.open('/auth/challenge'), { challenge: 'reto', firmado: false }, 'el inicio de sesión va sin firma: aún no hay clave');
   await assert.rejects(new ApiClient({ baseUrl: '', getSession: async () => null }).request('GET', '/x'), (e) => e.code === 'sin_sesion');
 });

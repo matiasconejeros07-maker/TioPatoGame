@@ -22,6 +22,8 @@ App V2                         Firebase Auth                 API V2 (Worker)    
 
 Después del enlace, la cuenta antigua **es** la cuenta: mismo saldo, compras, racha y récord, ahora con SSO y atada al dispositivo. La misma sesión sigue sirviendo.
 
+Todo lo jugado en la V1 va al marcador **clásico**: la V1 no tenía power-ups de pago. El marcador arcade parte vacío.
+
 Protecciones del enlace (todas con prueba en `server/test/api.test.js`):
 - una cuenta antigua se enlaza una sola vez; un segundo intento de otra persona recibe `cuenta_antigua_ya_enlazada`;
 - el ID token tiene que ser de este proyecto, estar vigente y venir de una contraseña escrita hace menos de 10 minutos (no sirve una sesión vieja robada);
@@ -33,14 +35,14 @@ Protecciones del enlace (todas con prueba en `server/test/api.test.js`):
 | Firebase (V1) | PostgreSQL (V2) |
 |---|---|
 | Authentication: `uid`, correo, nombre | `users.firebase_uid`, `legacy_email`, `display_name` |
-| `scores/<uid>`: `n`, `k`, `s`, `t`, `ms`, `a` | `users.display_name`, `users.name_key`, `scores.best`, `best_at`, `played_ms`, `users.avatar` |
+| `scores/<uid>`: `n`, `k`, `s`, `t`, `ms`, `a` | `users.display_name`, `users.name_key`, `scores.best` y `best_at` (marcador **clásico**), `users.played_ms`, `users.avatar` |
 | `wallets/<uid>`: `c`, `sp`, `lr`, `av` | `wallets.earned`, `spent`, `last_run_legacy`, `users.avatar` |
 | `wallets/<uid>/own`, `eq` | `inventory`, `equipped` |
 | `streaks/<uid>`: `n`, `t`, `x2`-`x4`, `y2`-`y4`, `bx`, `bm`, `bd` | `streaks` (días, último cobro, multiplicadores guardados y el activo) |
 | `stats/<uid>` | `stats` (`games`, `bounces` y los contadores de día/semana/mes) |
 | `missions/<uid>` | `achievements` |
 | `ruleta/<uid>` | `wheel` |
-| `weekly/…`, `monthly/…` | `period_scores` |
+| `weekly/…`, `monthly/…` | `period_scores` (marcador **clásico**) |
 | `roles`, `marco`, `compradores`, `vip` | `users.role`, `users.golden_frame`, fecha en `inventory`, `vip_contacts` |
 | **todo lo anterior, tal cual** | `legacy_snapshots.data` (copia íntegra por cuenta, por si hay que revisar algo) |
 
@@ -57,7 +59,7 @@ No se copian porque se recalculan: `hist` (contador de puestos; ahora lo hace Re
    ```
 3. Crea la base y el esquema:
    ```bash
-   psql "$DATABASE_URL" -f v2/db/migrations/0001_inicial.sql
+   for f in v2/db/migrations/*.sql; do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"; done
    ```
 4. Revisa sin escribir nada (muestra las sumas de control y los datos anómalos):
    ```bash

@@ -3,15 +3,28 @@ main = "src/index.js"
 compatibility_date = "2026-11-01"
 compatibility_flags = ["nodejs_compat"]
 
+# El bundle id / nombre de paquete y los ids de los productos NO van aquí: están en ../shared/ids.js
+
 [vars]
-APP_ID = "cl.tiopato.juego"            # bundle id (iOS) y nombre de paquete (Android)
-FIREBASE_PROJECT_ID = "juegotiopato"
-ALLOW_SANDBOX = "false"                # "true" solo en el ambiente de pruebas y mientras Apple revisa la app
-APPLE_ISSUER_ID = ""
-APPLE_KEY_ID = ""
-GOOGLE_CLIENT_EMAIL = ""
+FIREBASE_PROJECT_ID = "juegotiopato"       # solo para reclamar cuentas de la V1
+ALLOW_SANDBOX = "false"                    # "true" en el ambiente de pruebas y mientras Apple revisa la app
+APP_ATTEST_ENVIRONMENT = "production"      # "development" solo para compilaciones de desarrollo de Xcode
+
+# Apple
+APPLE_TEAM_ID = ""                         # Membership → Team ID
+APPLE_ISSUER_ID = ""                       # App Store Connect → Integraciones → Compras dentro de la app
+APPLE_KEY_ID = ""                          #   (id de esa clave)
+APPLE_SIGNIN_KEY_ID = ""                   # Certificates, Identifiers & Profiles → Keys → «Sign in with Apple»
+APPLE_APP_ATTEST_ROOT_CA = ""              # PEM de «Apple App Attestation Root CA» (apple.com/certificateauthority)
+
+# Google
+GOOGLE_CLIENT_EMAIL = ""                   # cuenta de servicio (Play Developer API + Play Integrity API)
+PLAY_GAMES_CLIENT_ID = ""                  # cliente OAuth «Aplicación web» enlazado a Play Games Services
+GOOGLE_PUSH_AUDIENCE = ""                  # «audiencia» configurada en la suscripción push de Pub/Sub (avisos de reembolso)
+GOOGLE_PUSH_SERVICE_ACCOUNT = ""           # cuenta de servicio con la que Pub/Sub firma esas entregas
+
 UPSTASH_REDIS_REST_URL = ""
 
 [[hyperdrive]]
 binding = "HYPERDRIVE"
-id = ""                                # wrangler hyperdrive create tiopato --connection-string="postgres://…"
+id = ""                                    # wrangler hyperdrive create tiopato --connection-string="postgres://…"

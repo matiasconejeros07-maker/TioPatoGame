@@ -3,11 +3,18 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "scripts": { "test": "node --test" },
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "^8.0.1",
     "@capacitor-community/admob": "^8.3.0",
+    "@capacitor-community/apple-sign-in": "^7.1.0",
+    "@capacitor-community/play-integrity": "^8.0.0",
     "@capacitor/core": "^8.6.2",
-    "@capgo/native-purchases": "^8.9.11"
+    "@capacitor/device": "^8.0.3",
+    "@capgo/native-purchases": "^8.9.11",
+    "@modbender/capacitor-play-games": "^0.5.0",
+    "capacitor-app-attest": "^7.2.1"
   }
 }

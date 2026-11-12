@@ -29,6 +29,14 @@ export class ApiClient {
     }
   }
 
+  /** Petición SIN sesión (inicio de sesión): todavía no hay clave con la que firmar. */
+  async open(path, data) {
+    const response = await this.fetch(this.baseUrl + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data ?? {}) });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new ApiError(response.status, json.error ?? 'error', json);
+    return json;
+  }
+
   async #send(method, path, data) {
     const session = await this.getSession();
     if (!session) throw new ApiError(401, 'sin_sesion');

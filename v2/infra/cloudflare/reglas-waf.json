@@ -1,0 +1,35 @@
+{
+  "description": "Gánale al Tío Pato · reglas personalizadas del WAF (fase http_request_firewall_custom)",
+  "rules": [
+    {
+      "description": "Solo existen estas rutas: todo lo demás se bloquea antes de llegar al Worker",
+      "action": "block",
+      "expression": "(http.host eq \"__API_HOST__\" and not (starts_with(http.request.uri.path, \"/v2/\") or starts_with(http.request.uri.path, \"/auth/\") or starts_with(http.request.uri.path, \"/webhooks/\") or http.request.uri.path eq \"/health\"))"
+    },
+    {
+      "description": "Solo los métodos que usa la API",
+      "action": "block",
+      "expression": "(http.host eq \"__API_HOST__\" and not http.request.method in {\"GET\" \"POST\" \"PUT\" \"DELETE\"})"
+    },
+    {
+      "description": "Las rutas con sesión exigen las cabeceras de la firma HMAC (el Worker comprueba que sean válidas)",
+      "action": "block",
+      "expression": "(http.host eq \"__API_HOST__\" and starts_with(http.request.uri.path, \"/v2/\") and (not any(http.request.headers.names[*] eq \"x-signature\") or not any(http.request.headers.names[*] eq \"x-session\") or not any(http.request.headers.names[*] eq \"x-timestamp\") or not any(http.request.headers.names[*] eq \"x-nonce\")))"
+    },
+    {
+      "description": "Los avisos de reembolso de Apple solo llegan desde la red de Apple (17.0.0.0/8)",
+      "action": "block",
+      "expression": "(http.host eq \"__API_HOST__\" and starts_with(http.request.uri.path, \"/webhooks/apple\") and not ip.src in {17.0.0.0/8})"
+    },
+    {
+      "description": "Los webhooks solo reciben POST",
+      "action": "block",
+      "expression": "(http.host eq \"__API_HOST__\" and starts_with(http.request.uri.path, \"/webhooks/\") and http.request.method ne \"POST\")"
+    },
+    {
+      "description": "Sin tráfico desde la red Tor",
+      "action": "block",
+      "expression": "(http.host eq \"__API_HOST__\" and ip.src.country eq \"T1\")"
+    }
+  ]
+}

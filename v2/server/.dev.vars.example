@@ -1,0 +1,8 @@
+# Secretos del servidor. Para desarrollo local: copia este archivo como `.dev.vars` (no se sube al repositorio).
+# En producción cada uno se carga con:  npx wrangler secret put NOMBRE
+MASTER_SECRET=                 # 32+ caracteres al azar. De aquí salen las claves HMAC de las sesiones. NO cambiarlo: cierra todas las sesiones.
+APPLE_PRIVATE_KEY=             # contenido del .p8 de «Compras dentro de la app»
+APPLE_SIGNIN_PRIVATE_KEY=      # contenido del .p8 de «Sign in with Apple»
+GOOGLE_PRIVATE_KEY=            # private_key del JSON de la cuenta de servicio
+PLAY_GAMES_CLIENT_SECRET=      # secreto del cliente OAuth «Aplicación web»
+UPSTASH_REDIS_REST_TOKEN=

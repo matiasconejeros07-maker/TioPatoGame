@@ -6,7 +6,8 @@ La V2 vive en esta carpeta mientras se construye. **La V1 (la raíz del reposito
 |---|---|
 | [docs/01-estructura.md](docs/01-estructura.md) | Carpetas, patrón M.V.C, a dónde va cada parte de la V1 y los pasos que faltan |
 | [docs/02-migracion-firebase.md](docs/02-migracion-firebase.md) | Cómo pasar cuentas, saldos, rachas y progreso de Firebase a PostgreSQL + Redis sin perder nada |
-| [docs/03-iap-ads.md](docs/03-iap-ads.md) | Compras con dinero real, validación de recibos, anuncios, consentimiento y «Eliminar cuenta» |
+| [docs/03-iap-ads.md](docs/03-iap-ads.md) | Compras, reembolsos, power-ups, anuncios, consentimiento, cambio de nombre y «Eliminar cuenta» |
+| [docs/04-seguridad.md](docs/04-seguridad.md) | Inicio de sesión con Apple y Play Games, atestación, Device Binding, firma HMAC y WAF |
 
 ## Probar
 

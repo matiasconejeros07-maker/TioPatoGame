@@ -22,8 +22,8 @@ export class AppleStoreVerifier {
     return signJwt('ES256', privateKey, { kid: keyId }, { iss: issuerId, iat, exp: iat + 300, aud: 'appstoreconnect-v1', bid: bundleId });
   }
 
-  /** @returns {Promise<{ transactionId: string, productId: string, quantity: number, environment: string, receipt: object }>} */
-  async verify({ transactionId, productId, userId, consumable = true }) {
+  /** Pregunta a Apple por una transacción. @returns {Promise<{ tx: object, environment: string } | null>} null si Apple no la conoce */
+  async #lookup(transactionId) {
     if (!/^\d{1,32}$/.test(transactionId ?? '')) throw new InvalidPurchaseError('id de transacción inválido');
     const authorization = 'Bearer ' + (await this.#token());
     for (const [environment, host] of HOSTS) {
@@ -33,17 +33,29 @@ export class AppleStoreVerifier {
       catch (e) { throw new StoreUnavailableError('Apple no responde'); }
       if (response.status === 404) continue;                     // no existe en este ambiente: se prueba el siguiente
       if (!response.ok) throw new StoreUnavailableError(`Apple respondió ${response.status}`);
-
-      const tx = decodeJwt((await response.json()).signedTransactionInfo).payload;
-      if (tx.bundleId !== this.config.bundleId) throw new InvalidPurchaseError('la compra es de otra app');
-      if (tx.productId !== productId) throw new InvalidPurchaseError('la compra es de otro producto');
-      if (tx.type !== (consumable ? 'Consumable' : 'Non-Consumable')) throw new InvalidPurchaseError('tipo de producto inesperado');
-      if (tx.revocationDate) throw new InvalidPurchaseError('la compra fue reembolsada');
-      // Un consumible es de la cuenta que lo compró. Una compra permanente es del Apple ID: se puede restaurar en otra cuenta del juego.
-      if (consumable && tx.appAccountToken?.toLowerCase() !== userId) throw new InvalidPurchaseError('la compra es de otra cuenta');
-      return { transactionId: String(tx.transactionId), productId, quantity: tx.quantity ?? 1, environment, receipt: tx };
+      return { tx: decodeJwt((await response.json()).signedTransactionInfo).payload, environment };
     }
-    throw new InvalidPurchaseError('Apple no conoce esa transacción');
+    return null;
+  }
+
+  /** @returns {Promise<{ transactionId: string, productId: string, quantity: number, environment: string, receipt: object }>} */
+  async verify({ transactionId, productId, userId, consumable = true }) {
+    const found = await this.#lookup(transactionId);
+    if (!found) throw new InvalidPurchaseError('Apple no conoce esa transacción');
+    const { tx, environment } = found;
+    if (tx.bundleId !== this.config.bundleId) throw new InvalidPurchaseError('la compra es de otra app');
+    if (tx.productId !== productId) throw new InvalidPurchaseError('la compra es de otro producto');
+    if (tx.type !== (consumable ? 'Consumable' : 'Non-Consumable')) throw new InvalidPurchaseError('tipo de producto inesperado');
+    if (tx.revocationDate) throw new InvalidPurchaseError('la compra fue reembolsada');
+    // Un consumible es de la cuenta que lo compró. Una compra permanente es del Apple ID: se puede restaurar en otra cuenta del juego.
+    if (consumable && tx.appAccountToken?.toLowerCase() !== userId) throw new InvalidPurchaseError('la compra es de otra cuenta');
+    return { transactionId: String(tx.transactionId), productId, quantity: tx.quantity ?? 1, environment, receipt: tx };
+  }
+
+  /** ¿Apple confirma que esta transacción fue reembolsada o revocada? (Para los avisos de reembolso.) */
+  async isRevoked(transactionId) {
+    const found = await this.#lookup(String(transactionId));
+    return Boolean(found?.tx.bundleId === this.config.bundleId && found.tx.revocationDate);
   }
 
   /** En iOS la transacción la cierra la app (finishTransaction) cuando el servidor confirma la entrega. */

@@ -1,96 +1,107 @@
 # 1 · Estructura del proyecto (M.V.C)
 
+## La regla
+
+- **Modelo:** solo datos. Getters y setters, y avisa cuando cambia. No decide nada. (Una prueba revisa que ningún modelo tenga métodos de lógica.)
+- **Controlador:** toda la funcionalidad. Recibe los toques, aplica las reglas del juego, lee y escribe los modelos y llama a los servicios.
+- **Vista:** dibuja lo que hay en los modelos y le avisa al controlador de los toques. No decide nada.
+- **Servicios:** las puertas al mundo exterior (API, tiendas, AdMob, SSO, atestación). No tienen reglas del juego.
+
 ## Carpetas
 
 ```
 v2/
-├── app/                        La app (Capacitor: iOS y Android)
+├── app/                          La app (Capacitor: iOS y Android) y la web en Modo Práctica
+│   ├── capacitor.config.json
 │   ├── src/
-│   │   ├── models/             MODELO: estado y reglas del juego. No conoce pantallas ni plugins.
-│   │   │   ├── GameFlowModel.js      estados (menú, partida, pausa de anuncios…) y transiciones válidas
-│   │   │   ├── AdPolicyModel.js      cuándo corresponde un anuncio (uno cada 5 partidas)
+│   │   ├── models/               MODELO (solo getters y setters)
+│   │   │   ├── GameFlowModel.js      pantalla actual y modo de la partida
+│   │   │   ├── SessionModel.js       sesión del jugador (o «práctica» en la web)
+│   │   │   ├── ProfileModel.js       nombre y desde cuándo puede cambiarlo
+│   │   │   ├── PowerUpModel.js       inventario de power-ups y los de la partida en curso
 │   │   │   ├── EntitlementsModel.js  derechos permanentes («Sin anuncios»)
-│   │   │   ├── ProfileModel.js       nombre y cuándo se puede volver a cambiar
-│   │   │   └── PowerUpModel.js       inventario y reglas: 10 s exactos, máximo 3 por partida
-│   │   ├── views/              VISTA: dibuja y avisa de los toques. No decide nada. (paso 4)
-│   │   ├── controllers/        CONTROLADOR: recibe los toques, usa los modelos y los servicios
-│   │   │   ├── GameFlowController.js controlador de estados: arranque, partidas, pausa de anuncios
+│   │   │   └── AdPolicyModel.js      cada cuántas partidas va un anuncio y cuántas van
+│   │   ├── controllers/          CONTROLADOR (toda la lógica)
+│   │   │   ├── GameFlowController.js transiciones entre pantallas, arranque, partidas, pausa de anuncios
+│   │   │   ├── AuthController.js     inicio de sesión: SSO + atestación + cambio de teléfono + cuenta de la V1
+│   │   │   ├── PowerUpController.js  reglas de los power-ups (10 s, 3 por partida, solo arcade) y su descuento
+│   │   │   ├── PurchaseController.js compras con dinero real, con pesos, y «Restaurar compras»
+│   │   │   ├── AdsController.js      interstitials: uno cada 5 partidas
 │   │   │   ├── ConsentController.js  consentimiento GDPR/CCPA
-│   │   │   ├── AdsController.js      interstitials entre partidas
-│   │   │   ├── PurchaseController.js compras con dinero real y «Restaurar compras»
-│   │   │   └── ProfileController.js  cambiar nombre (una vez cada 30 días)
-│   │   ├── services/           puertas al mundo exterior
-│   │   │   ├── ports.js              contratos (qué necesita el juego de la plataforma)
-│   │   │   ├── ApiClient.js          cliente de la API, firma HMAC cada petición
-│   │   │   └── adapters/             implementaciones: AdMobService.js, NativeStoreService.js
-│   │   ├── core/Emitter.js     avisos de los modelos a vistas y controladores
-│   │   └── composition.js      el único lugar donde se conectan las piezas concretas
+│   │   │   └── ProfileController.js  cambiar nombre (30 días, filtro de groserías) y cuadro VIP
+│   │   ├── views/                VISTA (paso 4)
+│   │   ├── services/
+│   │   │   ├── ports.js              contratos: qué necesita el juego de la plataforma
+│   │   │   ├── ApiClient.js          cliente de la API; firma HMAC cada petición
+│   │   │   └── adapters/             AppleSignIn, PlayGamesSignIn, AppAttest, PlayIntegrity, SecureSessionStore,
+│   │   │                             AdMob, NativeStore, FirebaseLegacyAuth
+│   │   ├── core/Emitter.js       avisos de los modelos
+│   │   └── composition.js        conecta las piezas: createGame() (app) y createPracticeGame() (web)
 │   └── test/
-├── server/                     La API (Cloudflare Worker)
+├── server/                       La API (Cloudflare Worker)
 │   ├── src/
-│   │   ├── controllers/        rutas HTTP: purchasesController.js, accountController.js
-│   │   ├── models/             acceso a PostgreSQL: PurchaseRepository, AccountRepository, SessionRepository
-│   │   ├── services/           casos de uso y terceros: PurchaseService, AppleStoreVerifier,
-│   │   │                       GooglePlayVerifier, FirebaseTokenVerifier, NonceStore, jwt.js
+│   │   ├── controllers/          rutas HTTP: auth, purchases, matches, account, webhooks
+│   │   ├── services/             casos de uso y terceros: AuthService, PurchaseService, attestors (Play Integrity,
+│   │   │                         App Attest), identityProviders (Apple, Play Games), verificadores de tiendas, stores (Redis)
+│   │   ├── repositories/         acceso a PostgreSQL, con transacciones
 │   │   ├── middleware/signedRequest.js   firma HMAC, ventana de 30 s y anti-repetición
-│   │   ├── app.js              arma la API con sus dependencias
-│   │   └── index.js            entrada del Worker (servicios reales)
-│   ├── test/
-│   └── wrangler.toml
-├── shared/                     lo que comparten app y servidor
-│   ├── signature.js            la fórmula de la firma (una sola implementación)
-│   ├── catalog.js              power-ups, packs, «Sin anuncios» y sus reglas
-│   └── names.js                reglas del nombre de jugador
-├── db/migrations/              esquema de PostgreSQL
-├── migracion/                  Firebase → PostgreSQL + Redis
+│   │   ├── app.js · index.js     armado de la API · entrada del Worker
+│   ├── test/ · testing/
+│   ├── wrangler.toml             variables
+│   └── .dev.vars.example         secretos
+├── shared/                       lo que comparten app y servidor
+│   ├── ids.js                    ← bundle id, ids de productos y enlaces a las tiendas (EL archivo a editar)
+│   ├── catalog.js                power-ups, packs, modos de partida, precios en pesos
+│   ├── names.js · profanity.js   reglas del nombre y filtro de groserías
+│   ├── devices.js                plazos de Device Binding y nonce de Android
+│   └── signature.js              la fórmula de la firma
+├── db/migrations/                esquema de PostgreSQL
+├── infra/cloudflare/             reglas del WAF y límites de frecuencia
+├── migracion/                    Firebase → PostgreSQL + Redis
 └── docs/
 ```
 
-En el servidor, la «Vista» es la respuesta JSON; por eso solo tiene controladores (HTTP), modelos (datos) y servicios (casos de uso).
+En el servidor no hay carpeta `models/`: lo que guarda datos es PostgreSQL, y el código que lo lee y escribe (con sus transacciones) está en `repositories/`, porque tiene lógica y por tu regla eso no es un modelo. Los controladores del servidor reciben la petición y delegan en servicios y repositorios.
 
 ## Cómo se aplica SOLID
 
-- **Una responsabilidad por archivo.** `AdPolicyModel` decide *si* toca un anuncio; `AdsController` decide *cuándo* pedirlo y mostrarlo; `AdMobService` es lo único que sabe hablar con AdMob.
-- **Abierto a extensión.** Un pack o un power-up nuevo es una línea en `shared/catalog.js`; otra red de anuncios u otra tienda es un adaptador nuevo, sin tocar controladores.
-- **Dependencias invertidas.** Los controladores reciben contratos (`services/ports.js`), no plugins. Por eso se prueban sin teléfono, y por eso las pruebas del servidor reemplazan a Apple y Google por dobles.
-- **Contratos chicos.** `ConsentService`, `AdsService` y `StoreService` están separados aunque AdMob implemente dos de ellos.
+- **Una responsabilidad por archivo.** `AdsController` decide cuándo va un anuncio; `AdMobService` es lo único que sabe hablar con AdMob.
+- **Abierto a extensión.** Un pack nuevo es una línea en `shared/catalog.js`; otra red de anuncios, otra tienda u otro SSO es un adaptador nuevo.
+- **Dependencias invertidas.** Los controladores reciben contratos (`services/ports.js`), no plugins. Por eso se prueban sin teléfono.
+- **Contratos chicos.** Consentimiento, anuncios, tienda, identidad, atestación y almacén de sesión son contratos separados.
+
+## Identificadores
+
+Todo está en **`shared/ids.js`**: `APP_ID` (`com.miempresa.pingpong`), los productos (`.pack1` a `.pack4` y `.sinanuncios`) y los enlaces a las tiendas. Al tener los definitivos se cambia ese archivo y `app/capacitor.config.json` (una prueba falla si no coinciden). Las credenciales van en `server/wrangler.toml` (variables) y `server/.dev.vars.example` (secretos).
+
+## Decisiones tomadas
+
+| Tema | Decisión | Dónde está |
+|---|---|---|
+| Versión web | Solo «Modo Práctica»: sin sesión, progreso, tienda ni marcadores, con aviso para descargar la app | `createPracticeGame()`; el aviso se dibuja en el paso 4 |
+| Device Binding | 1 dispositivo = 1 cuenta; cambio de teléfono una vez cada 30 días | `AuthRepository`, doc 04 |
+| Ventaja de pago | Dos marcadores: **clásico** (sin power-ups de pago) y **arcade** (con power-ups) | `MatchMode`, `scores.mode`, claves `lb:classic:*` y `lb:arcade:*` |
+| Power-ups | Con dinero real (packs) o con pesos del juego a $500.000 cada uno; los potenciadores de burbuja de la V1 siguen | doc 03 |
+| Clave HMAC | De cada sesión, entregada tras la atestación; no va escrita en la app | doc 04 |
 
 ## A dónde va cada parte de la V1
 
-La V1 es un solo `index.html` de ~418 KB con todo mezclado. Este es el destino de cada parte:
-
 | V1 | V2 |
 |---|---|
-| Física y bucle de la partida (`SPEED0`, `fitBall`, `padWidth`…) | `app/src/models/MatchModel.js` (paso 4) |
-| Potenciadores de burbuja (`PUPS`, `PUP_POINTS`) | se conservan dentro de `MatchModel`; los de pago son `PowerUpModel.js` |
-| `tienda.js` (catálogo y economía) | `shared/` (lo leen app y servidor; ya no hay reglas de Firebase que regenerar) |
-| `dialogos.js` | `app/src/models/DialogueModel.js` |
-| HTML/CSS de cada pantalla | `app/src/views/` (una vista por pantalla) |
-| Llamadas REST a Firebase | `ApiClient` → Worker → PostgreSQL |
-| `firebase-rules.json` (validación) | controladores y servicios del servidor, con transacciones |
-| Sonidos (`tone()`) | `app/src/services/AudioService.js` (paso 6) |
-
-## Decisiones que cambian respecto de lo pedido (y por qué)
-
-1. **La clave de la firma HMAC es de cada sesión, no una clave fija dentro de la app.** Una clave escrita en el código de la app se extrae del APK en minutos y deja de proteger. En cambio, el servidor entrega una clave por sesión al iniciar sesión (después de la atestación), y la app la guarda en el Keystore/Keychain. La fórmula es exactamente la pedida: `HMAC-SHA256(Body + Timestamp + Nonce, clave)`, se rechaza un desfase mayor a 30 s y cada nonce vale una sola vez.
-2. **La V2 corre como app nativa, no como web.** La atestación de hardware, el Device Binding, Play Games y las compras nativas no existen en un navegador. Ver «Decisiones pendientes».
+| Física y bucle de la partida (`SPEED0`, `fitBall`, `padWidth`…) | `MatchController` + `MatchModel` (paso 4) |
+| Potenciadores de burbuja (`PUPS`, `PUP_POINTS`) | se conservan en la partida, en los dos modos |
+| `tienda.js` (catálogo y economía) | `shared/` |
+| `dialogos.js` | datos en `shared/`, lógica en un controlador |
+| HTML/CSS de cada pantalla | `app/src/views/` |
+| Llamadas REST a Firebase y `firebase-rules.json` | `ApiClient` → Worker → PostgreSQL |
 
 ## Pasos
 
 | Paso | Contenido | Estado |
 |---|---|---|
-| 1 | Estructura, esquema de la base, migración de Firebase, compras, «Sin anuncios», anuncios, consentimiento, cambiar nombre, eliminar cuenta, firma HMAC | **hecho y probado** (este paso) |
-| 2 | Inicio de sesión con Apple y Play Games, atestación (Play Integrity / App Attest), Device Binding, Cloudflare WAF | pendiente |
-| 3 | Partidas y economía en el servidor (cobro, tienda, racha, ruleta, misiones) y marcadores en Redis | pendiente |
-| 4 | Pasar el juego de `index.html` a modelos y vistas; interfaz premium, tienda y marcadores nuevos, puntos rojos | pendiente |
+| 1 | Estructura, base de datos, migración de Firebase, compras, «Sin anuncios», anuncios, consentimiento, cambiar nombre, eliminar cuenta, firma HMAC | hecho y probado |
+| 2 | SSO (Apple, Play Games), atestación (App Attest, Play Integrity), Device Binding con cambio cada 30 días, WAF, reembolsos, uso de power-ups, compra con pesos, filtro de groserías, marcadores por modo, Modo Práctica | hecho y probado con dobles; falta probar en teléfonos reales |
+| 3 | Partidas y economía en el servidor (cobro, tienda con pesos, racha, ruleta, misiones) y marcadores en Redis | pendiente |
+| 4 | Pasar el juego de `index.html` a controladores y vistas; interfaz premium, tienda y marcadores nuevos, puntos rojos. **Animaciones:** del Pato en la partida, de compra de cada personaje y de las monedas, revelado premium del personaje secreto y cuadro VIP | pendiente |
 | 5 | Sección Power-Ups de la tienda (packs animados) y botón de activación en la partida | pendiente |
 | 6 | Audio: música de fondo y sonidos de rebote equipables | pendiente |
-
-Lo que el paso 1 **no** incluye todavía: el inicio de sesión (las pruebas crean las sesiones directo en la base), el descuento de power-ups al usarlos en una partida y las pantallas.
-
-## Decisiones pendientes (son tuyas)
-
-1. **¿Qué pasa con la versión web?** Hoy el juego se juega en el navegador. Con atestación y Device Binding obligatorios, la web no puede competir en los marcadores ni comprar. Opciones: cerrar la web el día del corte y dejar un aviso con los enlaces a las tiendas (recomendado), o mantenerla como «modo práctica» sin cuenta ni marcador.
-2. **Una cuenta vive en un solo ecosistema.** Play Games no existe en iOS, así que quien entra con Play Games no puede pasar su cuenta a un iPhone (ni al revés), salvo que más adelante se permita enlazar las dos identidades a la misma cuenta.
-3. **Device Binding y teléfonos compartidos.** «1 dispositivo = 1 cuenta» significa que dos hermanos con un mismo teléfono comparten cuenta. También hay que definir el cambio de teléfono (propuesta: se permite mover la cuenta a un teléfono nuevo una vez cada 30 días).
-4. **Los identificadores son provisorios.** `cl.tiopato.juego` y los productos `cl.tiopato.pack.*` hay que cambiarlos por los reales de las tiendas.

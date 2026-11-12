@@ -39,7 +39,7 @@ Esas herramientas engañan a **la app**: le hacen creer que la tienda aprobó un
 
 ### Qué tienes que configurar
 
-- **App Store Connect:** crea los 4 packs como *consumibles* (y «Sin anuncios» como *no consumible*) con los mismos ids de `shared/catalog.js`. En *Usuarios y acceso → Integraciones → Compras dentro de la app* genera una clave: de ahí salen `APPLE_ISSUER_ID`, `APPLE_KEY_ID` y el archivo `.p8` (`APPLE_PRIVATE_KEY`).
+- **App Store Connect:** crea los 4 packs como *consumibles* (y «Sin anuncios» como *no consumible*) con los ids de `shared/ids.js`. En *Usuarios y acceso → Integraciones → Compras dentro de la app* genera una clave: de ahí salen `APPLE_ISSUER_ID`, `APPLE_KEY_ID` y el archivo `.p8` (`APPLE_PRIVATE_KEY`).
 - **Play Console:** crea los mismos 4 productos como *productos de pago único*. En Google Cloud crea una cuenta de servicio, dale en Play Console el permiso *Ver datos financieros y administrar pedidos*: de su JSON salen `GOOGLE_CLIENT_EMAIL` y `GOOGLE_PRIVATE_KEY`.
 - **Secretos del Worker:**
   ```bash
@@ -56,22 +56,34 @@ Esas herramientas engañan a **la app**: le hacen creer que la tienda aprobó un
   ```
 - **`ALLOW_SANDBOX`:** en producción va en `"false"` para que las compras gratis de prueba (TestFlight, compradores de prueba de Google) no entreguen power-ups reales. **Ponlo en `"true"` mientras Apple revisa la app**: los revisores compran en sandbox y, si la compra falla, rechazan la app.
 
-### Falta (se agrega junto con el paso 3)
+### Reembolsos
 
-- **Reembolsos:** cuando Apple o Google devuelven el dinero, avisan al servidor (App Store Server Notifications V2 / Real-time Developer Notifications). Falta la ruta que recibe ese aviso y descuenta los power-ups. La columna `purchases.status` y el libro `powerup_ledger` ya lo contemplan.
-- **Descuento al usar:** hoy el servidor suma power-ups al comprar; el descuento al usarlos va con el registro de partidas.
+Cuando Apple o Google devuelven el dinero, avisan al servidor y este quita lo entregado, una sola vez:
+
+- **Apple** (`POST /webhooks/apple`): el aviso se usa solo como pista. El servidor saca el id de la transacción y **le pregunta a Apple** si está reembolsada; un aviso falso no logra quitarle nada a nadie.
+- **Google** (`POST /webhooks/google`): cada aviso llega firmado por Google; se comprueba la firma, la audiencia y la cuenta de servicio antes de actuar.
+- Un pack reembolsado descuenta sus power-ups. Si ya se usaron, el inventario queda en negativo (el jugador ve 0) y **la próxima compra primero salda esa deuda**: comprar, usar y pedir reembolso no deja power-ups gratis.
+- «Sin anuncios» reembolsado: vuelven los anuncios, y «Restaurar compras» no lo revive.
 
 ## Power-ups: reglas de negocio
 
-Están en el modelo (`PowerUpModel.js`) y en `shared/catalog.js`, no en la vista:
+Están en `PowerUpController` (app) y en `MatchRepository` (servidor, que es quien manda):
 
-- se obtienen solo comprando packs (no hay otra ruta que sume al inventario);
-- se activan cuando el jugador quiere;
-- duran **exactamente 10 000 ms** del reloj de la partida;
-- **máximo 3 por partida**; un intento rechazado no gasta nada;
-- no se apila el mismo power-up mientras está activo.
+- **Cómo se consiguen:** en packs con dinero real, o de a uno con pesos del juego a **$500.000** (`POWERUP_COIN_PRICE`). Los potenciadores de burbuja de la V1 siguen saliendo solos en la partida, gratis, en los dos modos.
+- **Dónde se usan:** solo en partidas **arcade**. En **clásico** (el ranking principal) están desactivados, en la app y en el servidor.
+- se activan cuando el jugador quiere y duran **exactamente 10 000 ms**;
+- **máximo 3 por partida** (lo garantiza la base de datos); no se apila el mismo mientras está activo;
+- **se descuentan en el momento en que se usan** (`POST /v2/matches/:id/powerups`): inventario, registro en la partida y libro de movimientos en una transacción. Dos toques simultáneos gastan uno solo. En la app el efecto empieza al instante y, si el servidor no acepta el uso (o no hay conexión), se apaga y el power-up vuelve.
 
-Nota de producto: como solo se consiguen pagando y ayudan a hacer más rebotes, quien paga tiene ventaja en los marcadores. Si quieres evitar la etiqueta «pay-to-win», la alternativa habitual es un marcador aparte para partidas sin power-ups.
+## Cuadro VIP del personaje secreto
+
+`PUT /v2/account/vip` guarda el WhatsApp (formato `+56912345678`) de quien desbloqueó el personaje secreto, solo si de verdad lo tiene y aceptó ser contactado. Para verlos:
+
+```sql
+SELECT u.display_name, v.whatsapp, v.left_at FROM vip_contacts v JOIN users u ON u.id = v.user_id ORDER BY v.left_at DESC;
+```
+
+El cuadro premium y la animación de revelado se dibujan en el paso 4; los contactos que ya existían en la V1 se migran a la misma tabla.
 
 ## Anuncios
 
@@ -86,7 +98,7 @@ Configura en AdMob un bloque *intersticial* por plataforma y pasa su id a `AdMob
 
 ### «Sin anuncios»
 
-Producto `cl.tiopato.sinanuncios`: una compra **permanente** (no consumible) que se valida en el servidor igual que los packs y queda como derecho `no_ads` de la cuenta (tabla `entitlements`).
+Producto `PRODUCT_IDS.noAds` (`com.miempresa.pingpong.sinanuncios`): una compra **permanente** (no consumible) que se valida en el servidor igual que los packs y queda como derecho `no_ads` de la cuenta (tabla `entitlements`).
 
 - Quien lo tiene no ve anuncios ni el formulario de consentimiento; si lo compra a mitad de sesión, los anuncios se cortan de inmediato.
 - **«Restaurar compras»** (`PurchaseController.restore()`): Apple lo exige para las compras permanentes; va como botón en Ajustes. Sirve al reinstalar o tras eliminar la cuenta y volver a empezar.
@@ -124,7 +136,7 @@ En Ajustes debe ir el botón «Opciones de privacidad» cuando `privacyOptionsRe
 - el nombre anterior queda libre para otro jugador;
 - si aún no puede, el servidor responde la fecha desde la que podrá, para mostrar «faltan N días».
 
-No hay filtro de palabras ofensivas; si lo quieres, dime con qué criterio.
+**Filtro de groserías** (`shared/profanity.js`): rechaza garabatos chilenos (weón, wea, ctm, ql, culiao, conchetumare…) y referencias a genitales, también disfrazados (`p1c0`, `w.e.o.n`, `weeeón`, `xXqliaoXx`). Las palabras que también son inocentes dentro de otras (pico, pene, tula, culo…) solo se bloquean como palabra completa, para no rechazar «Penélope» o «Picoteo». Un nombre rechazado no gasta el cambio de los 30 días. La lista está en ese archivo y se amplía agregando palabras; como todo filtro de lista, alguien ingenioso puede inventar una variante que no esté: conviene revisar los marcadores de vez en cuando. Los nombres que vienen de la V1 no se filtran al migrar.
 
 ## Eliminar cuenta
 
@@ -134,4 +146,6 @@ No hay filtro de palabras ofensivas; si lo quieres, dime con qué criterio.
 - conserva las compras con dinero real **sin dueño** (obligación contable y control de fraude) y un rastro sin datos personales de que la solicitud se cumplió;
 - libera el dispositivo, así la persona puede volver a empezar.
 
-Pendientes para la revisión de las tiendas: (1) al eliminar una cuenta creada con *Sign in with Apple* hay que revocar su token con Apple (va con el inicio de sesión, paso 2); (2) Google Play pide además una **página web** donde solicitar la eliminación sin instalar la app; (3) quitar al jugador de los marcadores de Redis en la misma operación (paso 3).
+Al eliminar una cuenta creada con *Sign in with Apple*, el servidor revoca su acceso con Apple (lo exige la revisión de la App Store).
+
+Pendientes para la revisión de las tiendas: (1) Google Play pide además una **página web** donde solicitar la eliminación sin instalar la app; (2) quitar al jugador de los marcadores de Redis en la misma operación (paso 3).

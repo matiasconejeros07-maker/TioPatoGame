@@ -1,39 +1,23 @@
 // Valida una compra de Android preguntándole directamente a Google (Android Publisher API) y, una vez
 // entregada, la «consume» desde el servidor: así el mismo token no sirve dos veces ni un APK parchado
 // (Lucky Patcher y similares) puede fabricar compras.
-import { signJwt } from './jwt.js';
+import { GoogleServiceAccount } from './GoogleServiceAccount.js';
 import { InvalidPurchaseError, StoreUnavailableError } from './errors.js';
 
 const API = 'https://androidpublisher.googleapis.com/androidpublisher/v3/applications';
-const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SCOPE = 'https://www.googleapis.com/auth/androidpublisher';
 
 export class GooglePlayVerifier {
-  #accessToken = null;
-  #expiresAt = 0;
-
   /**
    * @param {{ packageName: string, clientEmail: string, privateKey: string, allowSandbox?: boolean,
    *           fetch?: typeof fetch, now?: () => number }} config  cuenta de servicio con permiso en Play Console
    */
-  constructor(config) { this.config = { fetch: (...a) => fetch(...a), now: Date.now, allowSandbox: false, ...config }; }
-
-  async #authorization() {
-    const { clientEmail, privateKey, now } = this.config;
-    if (!this.#accessToken || now() > this.#expiresAt - 60_000) {
-      const iat = Math.floor(now() / 1000);
-      const assertion = await signJwt('RS256', privateKey, {}, { iss: clientEmail, scope: SCOPE, aud: TOKEN_URL, iat, exp: iat + 3600 });
-      const response = await this.#call(TOKEN_URL, {
-        method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion }),
-      });
-      if (!response.ok) throw new StoreUnavailableError(`Google no dio acceso (${response.status})`);
-      const data = await response.json();
-      this.#accessToken = data.access_token;
-      this.#expiresAt = now() + data.expires_in * 1000;
-    }
-    return 'Bearer ' + this.#accessToken;
+  constructor(config) {
+    this.config = { fetch: (...a) => fetch(...a), now: Date.now, allowSandbox: false, ...config };
+    this.account = config.account ?? new GoogleServiceAccount(this.config);
   }
+
+  #authorization() { return this.account.authorization(SCOPE); }
 
   async #call(url, init) {
     try { return await this.config.fetch(url, init); } catch (e) { throw new StoreUnavailableError('Google no responde'); }

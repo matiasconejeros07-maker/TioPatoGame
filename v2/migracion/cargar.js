@@ -17,12 +17,12 @@ export async function load(sql, { users, anomalies }) {
     let skipped = 0;
     for (const u of users) {
       const [row] = await tx`
-        INSERT INTO users (firebase_uid, display_name, name_key, legacy_email, avatar, golden_frame, role, status, created_at)
+        INSERT INTO users (firebase_uid, display_name, name_key, legacy_email, avatar, golden_frame, role, played_ms, status, created_at)
         VALUES (${u.firebaseUid}, ${u.displayName}, ${u.nameKey}, ${u.legacyEmail}, ${u.avatar}, ${u.goldenFrame}, ${u.role},
-                'legacy_unclaimed', COALESCE(${u.createdAt}, now()))
+                ${u.score?.playedMs ?? 0}, 'legacy_unclaimed', COALESCE(${u.createdAt}, now()))
         ON CONFLICT (firebase_uid) DO UPDATE SET
           display_name = EXCLUDED.display_name, name_key = EXCLUDED.name_key, legacy_email = EXCLUDED.legacy_email,
-          avatar = EXCLUDED.avatar, golden_frame = EXCLUDED.golden_frame, role = EXCLUDED.role
+          avatar = EXCLUDED.avatar, golden_frame = EXCLUDED.golden_frame, role = EXCLUDED.role, played_ms = EXCLUDED.played_ms
         WHERE users.status = 'legacy_unclaimed'
         RETURNING id`;
       if (!row) { skipped++; continue; }           // ya reclamada en la V2: no se pisa
@@ -40,8 +40,9 @@ export async function load(sql, { users, anomalies }) {
         streak_x2: u.streak.x2, streak_x3: u.streak.x3, streak_x4: u.streak.x4,
         wheel_x2: u.streak.y2, wheel_x3: u.streak.y3, wheel_x4: u.streak.y4,
         boost_started_at: u.streak.boostStartedAt, boost_mult: u.streak.boostMult, boost_ms: u.streak.boostMs })}`;
-      if (u.score) await tx`INSERT INTO scores (user_id, best, best_at, played_ms) VALUES (${id}, ${u.score.best}, ${u.score.bestAt}, ${u.score.playedMs})`;
-      if (u.periodScores.length) await tx`INSERT INTO period_scores ${tx(u.periodScores.map((p) => ({ ...p, user_id: id })))}`;
+      // Todo lo de la V1 se jugó sin power-ups de pago: va al marcador clásico.
+      if (u.score) await tx`INSERT INTO scores (user_id, mode, best, best_at) VALUES (${id}, 'classic', ${u.score.best}, ${u.score.bestAt})`;
+      if (u.periodScores.length) await tx`INSERT INTO period_scores ${tx(u.periodScores.map((p) => ({ ...p, mode: 'classic', user_id: id })))}`;
       if (u.stats) await tx`INSERT INTO stats (user_id, games, bounces, periods) VALUES (${id}, ${u.stats.games}, ${u.stats.bounces}, ${tx.json(u.stats.periods)})`;
       if (u.achievements.length) await tx`INSERT INTO achievements ${tx(u.achievements.map((a) => ({ user_id: id, achievement_id: a })))}`;
       if (u.wheel) await tx`INSERT INTO wheel (user_id, last_spin_at, claimed_spin) VALUES (${id}, ${u.wheel.lastSpinAt}, ${u.wheel.claimedSpin})`;
@@ -71,7 +72,7 @@ export async function databaseTotals(sql, firebaseUids) {
       (SELECT COALESCE(sum(days), 0) FROM streaks WHERE user_id IN (SELECT id FROM u)) AS "streakDays",
       (SELECT COALESCE(sum(streak_x2 + streak_x3 + streak_x4 + wheel_x2 + wheel_x3 + wheel_x4), 0) FROM streaks WHERE user_id IN (SELECT id FROM u)) AS "savedMultipliers",
       (SELECT COALESCE(sum(best), 0) FROM scores WHERE user_id IN (SELECT id FROM u)) AS "bestScores",
-      (SELECT COALESCE(sum(played_ms), 0) FROM scores WHERE user_id IN (SELECT id FROM u)) AS "playedMs",
+      (SELECT COALESCE(sum(played_ms), 0) FROM users WHERE id IN (SELECT id FROM u)) AS "playedMs",
       (SELECT COALESCE(sum(games), 0) FROM stats WHERE user_id IN (SELECT id FROM u)) AS games,
       (SELECT count(*) FROM achievements WHERE user_id IN (SELECT id FROM u)) AS achievements`;
   return Object.fromEntries(Object.entries(t).map(([k, v]) => [k, Number(v)]));

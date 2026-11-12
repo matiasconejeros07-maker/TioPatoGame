@@ -29,6 +29,21 @@
  * @property {() => Promise<StorePurchase[]>} restorablePurchases   compras permanentes de la cuenta de la tienda («Restaurar compras»)
  * @property {(purchase: StorePurchase) => Promise<void>} finish  cierra la compra en el teléfono, ya entregada
  *
+ * @typedef {object} IdentityService   SSO oficial de la plataforma
+ * @property {(challenge: string) => Promise<object>} signIn   credencial para el servidor; lanza { cancelled: true } si el jugador cierra el diálogo
+ *
+ * @typedef {object} AttestationService   atestación de hardware
+ * @property {(challenge: string, options?: { renew?: boolean }) => Promise<object>} attest   prueba de que la app y el teléfono son genuinos
+ * @property {boolean} canRenew   true si puede crear una clave nueva cuando el servidor no reconoce la guardada (iOS)
+ *
+ * @typedef {object} SessionStore   guarda la sesión en el Keystore / Keychain
+ * @property {() => Promise<{ id: string, key: Uint8Array, userId: string } | null>} load
+ * @property {(session: { id: string, key: Uint8Array, userId: string }) => Promise<void>} save
+ * @property {() => Promise<void>} clear
+ *
+ * @typedef {object} LegacyAuthService   solo para reclamar cuentas de la V1
+ * @property {(login: string, password: string) => Promise<string>} signIn   ID token de Firebase
+ *
  * @typedef {object} Api
  * @property {(method: string, path: string, data?: object) => Promise<any>} request
  */

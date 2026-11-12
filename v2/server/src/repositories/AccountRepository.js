@@ -1,6 +1,9 @@
 import { HttpError } from '../services/errors.js';
 import { NAME_CHANGE_DAYS } from '../../../shared/names.js';
 
+/** El personaje secreto (el de los 100 millones). Mismo id que en la V1. */
+const SECRET_CHARACTER = 'ch_millonario';
+
 const sha256Hex = async (text) =>
   [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map((b) => b.toString(16).padStart(2, '0')).join('');
 
@@ -47,7 +50,7 @@ export class AccountRepository {
   /**
    * Cambia el nombre del jugador: único (sin distinguir mayúsculas ni tildes) y como mucho una vez cada 30 días.
    * La condición del plazo va en el mismo UPDATE, así dos peticiones a la vez no logran dos cambios.
-   * @param {{ displayName: string, key: string }} name  ya validado con parseName()
+   * @param {{ displayName: string, key: string }} name  ya validado con checkName()
    * @returns {Promise<{ displayName: string, nextChangeAt: string }>}
    */
   async rename(userId, name) {
@@ -66,6 +69,23 @@ export class AccountRepository {
     if (!user) throw new HttpError(401, 'sesion_invalida');
     throw new HttpError(429, 'cambio_de_nombre_en_espera', undefined, { nextChangeAt: user.next_change_at.toISOString() });
   }
+
+  /**
+   * Cuadro VIP: quien desbloqueó el personaje secreto deja su WhatsApp para que lo contacten. Queda en `vip_contacts`.
+   * Solo vale si de verdad tiene el personaje. Volver a enviarlo reemplaza el número.
+   */
+  async saveVipContact(userId, { whatsapp, consent }) {
+    const [row] = await this.sql`
+      INSERT INTO vip_contacts (user_id, whatsapp, consent, left_at)
+      SELECT ${userId}, ${whatsapp}, ${consent}, now()
+      WHERE EXISTS (SELECT 1 FROM inventory WHERE user_id = ${userId} AND item_id = ${SECRET_CHARACTER})
+      ON CONFLICT (user_id) DO UPDATE SET whatsapp = EXCLUDED.whatsapp, consent = EXCLUDED.consent, left_at = now()
+      RETURNING user_id`;
+    if (!row) throw new HttpError(403, 'sin_personaje_secreto');
+  }
+
+  /** Identidades SSO de la cuenta (para revocar el acceso de Apple al eliminarla). */
+  identities(userId) { return this.sql`SELECT provider, refresh_token_enc FROM identities WHERE user_id = ${userId}`; }
 
   /**
    * «Eliminar cuenta» (requisito de Apple y Google): borra la cuenta y todo lo suyo. Las compras con dinero
