@@ -39,7 +39,7 @@ Esas herramientas engañan a **la app**: le hacen creer que la tienda aprobó un
 
 ### Qué tienes que configurar
 
-- **App Store Connect:** crea los 4 packs como *consumibles* con los mismos ids de `shared/catalog.js`. En *Usuarios y acceso → Integraciones → Compras dentro de la app* genera una clave: de ahí salen `APPLE_ISSUER_ID`, `APPLE_KEY_ID` y el archivo `.p8` (`APPLE_PRIVATE_KEY`).
+- **App Store Connect:** crea los 4 packs como *consumibles* (y «Sin anuncios» como *no consumible*) con los mismos ids de `shared/catalog.js`. En *Usuarios y acceso → Integraciones → Compras dentro de la app* genera una clave: de ahí salen `APPLE_ISSUER_ID`, `APPLE_KEY_ID` y el archivo `.p8` (`APPLE_PRIVATE_KEY`).
 - **Play Console:** crea los mismos 4 productos como *productos de pago único*. En Google Cloud crea una cuenta de servicio, dale en Play Console el permiso *Ver datos financieros y administrar pedidos*: de su JSON salen `GOOGLE_CLIENT_EMAIL` y `GOOGLE_PRIVATE_KEY`.
 - **Secretos del Worker:**
   ```bash
@@ -77,22 +77,54 @@ Nota de producto: como solo se consiguen pagando y ayudan a hacer más rebotes, 
 
 Plugin: `@capacitor-community/admob`. Solo interstitials, y solo en un punto: al salir del resumen de la partida.
 
-- **Los decide el controlador de estados.** `GameFlowModel` no tiene transición de `PLAYING` a `AD_BREAK`: un anuncio encima de una partida es imposible por construcción, no por cuidado.
-- **Nunca hacen esperar.** El anuncio se carga en segundo plano durante la partida; si no está listo al terminar, se salta.
-- **Política (`AdPolicyModel`, ajustable):** sin anuncios en las 2 primeras partidas de la sesión; después, como mucho uno cada 3 partidas y nunca dos en menos de 2,5 minutos; tampoco tras una partida de menos de 12 segundos.
-- **Si AdMob falla, el juego sigue.** Ningún error de anuncios llega al jugador.
+- **Uno cada 5 partidas, para todos** los que no compraron «Sin anuncios» (`AD_EVERY_MATCHES` en `shared/catalog.js`).
+- **Los decide el controlador de estados.** `GameFlowModel` no tiene transición de `PLAYING` a `AD_BREAK`: un anuncio encima de una partida es imposible por construcción.
+- **No se salta el turno.** Si en la partida 5 no hay anuncio cargado (sin señal, AdMob sin anuncios disponibles), el juego sigue y el anuncio queda pendiente para la pausa siguiente.
+- **Si AdMob falla, el juego sigue.** Ningún error de anuncios deja al jugador pegado.
 
-Configura en AdMob un bloque *intersticial* por plataforma y pasa su id a `AdMobAdsService`. En `AndroidManifest.xml` e `Info.plist` va el id de la app de AdMob (lo pide el plugin al instalarlo).
+Configura en AdMob un bloque *intersticial* por plataforma y pasa su id a `AdMobAdsService`. En `AndroidManifest.xml` e `Info.plist` va el id de la app de AdMob.
+
+### «Sin anuncios»
+
+Producto `cl.tiopato.sinanuncios`: una compra **permanente** (no consumible) que se valida en el servidor igual que los packs y queda como derecho `no_ads` de la cuenta (tabla `entitlements`).
+
+- Quien lo tiene no ve anuncios ni el formulario de consentimiento; si lo compra a mitad de sesión, los anuncios se cortan de inmediato.
+- **«Restaurar compras»** (`PurchaseController.restore()`): Apple lo exige para las compras permanentes; va como botón en Ajustes. Sirve al reinstalar o tras eliminar la cuenta y volver a empezar.
+- La compra vale para **una cuenta del juego a la vez**: si se restaura en otra cuenta, se mueve a esa. Un pago no deja dos cuentas sin anuncios.
+- En las tiendas: créalo como *no consumible* en App Store Connect y como *producto de pago único* en Play Console. El precio lo pones tú en cada tienda.
 
 ## Privacidad (GDPR / CCPA)
 
-`ConsentController` corre en el primer arranque, **antes** de inicializar AdMob:
+Todos ven anuncios, **acepten o rechacen** el consentimiento. Lo que cambia es el tipo de anuncio:
 
-1. consulta el estado con la plataforma de consentimiento de Google (UMP);
-2. si la región lo exige, muestra el formulario;
-3. solo si el resultado permite pedir anuncios se inicializa AdMob. Si el jugador rechaza o algo falla, se juega sin anuncios.
+| Respuesta del jugador | Qué anuncios ve |
+|---|---|
+| Acepta | Personalizados |
+| Rechaza | No personalizados o «limitados» (los elige Google) |
+| Vive donde no hay que preguntar (p. ej. Chile) | No ve formulario; anuncios normales |
+| Aún no responde el formulario | Ninguno todavía: el formulario vuelve a salir en cada pausa de anuncios hasta que responda |
+
+El único caso sin anuncios es el último, y es obligatorio: en Europa no se puede pedir un anuncio antes de que la persona haya respondido, y el propio SDK de Google lo bloquea. La app no lo deja pasar de largo: insiste en cada pausa en que toca anuncio.
+
+Dos límites que no dependen del código:
+- A quien rechaza en Europa, Google le sirve menos anuncios (a veces ninguno disponible) y pagan menos.
+- El formulario de Google trae el botón de rechazar; no se puede configurar un «acepta o no juegas».
+
+Flujo (`AdsController.start()`): ¿tiene «Sin anuncios»? → si no, consentimiento con la plataforma de Google (UMP; muestra el formulario solo donde la ley lo exige) → AdMob → primer anuncio en carga.
 
 En Ajustes debe ir el botón «Opciones de privacidad» cuando `privacyOptionsRequired` sea verdadero (lo exige Google para poder cambiar la decisión). Los mensajes se crean en AdMob → *Privacidad y mensajes* (uno para Europa, otro para los estados de EE. UU.; el de iOS incluye el permiso de seguimiento de Apple).
+
+## Cambiar nombre
+
+`PUT /v2/account/name` (Ajustes → «Cambiar nombre»):
+
+- **una vez cada 30 días**; quien nunca lo ha cambiado (incluidas las cuentas que vienen de la V1) puede hacerlo de inmediato;
+- de 3 a 12 caracteres y **único** sin distinguir mayúsculas ni tildes, igual que en la V1 («Matías» y «matias» son el mismo);
+- el plazo lo decide el servidor (el reloj del teléfono no sirve para saltárselo) y dos intentos simultáneos logran un solo cambio;
+- el nombre anterior queda libre para otro jugador;
+- si aún no puede, el servidor responde la fecha desde la que podrá, para mostrar «faltan N días».
+
+No hay filtro de palabras ofensivas; si lo quieres, dime con qué criterio.
 
 ## Eliminar cuenta
 

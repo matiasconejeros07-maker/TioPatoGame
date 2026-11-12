@@ -1,6 +1,6 @@
 // Compras con dinero real. El teléfono cobra (StoreKit / Play Billing), pero quien entrega es el servidor,
 // después de validar la compra con Apple o Google. La app nunca se suma power-ups por su cuenta.
-import { PACKS } from '../../../shared/catalog.js';
+import { PACKS, PERMANENT } from '../../../shared/catalog.js';
 import { ApiError } from '../services/ApiClient.js';
 
 export const PurchaseOutcome = Object.freeze({ DELIVERED: 'delivered', CANCELLED: 'cancelled', PENDING: 'pending', REJECTED: 'rejected' });
@@ -10,15 +10,34 @@ export class PurchaseController {
 
   /**
    * @param {{ store: import('../services/ports.js').StoreService, api: import('../services/ports.js').Api,
-   *           inventory: import('../models/PowerUpModel.js').PowerUpInventoryModel, getUserId: () => string }} deps
+   *           inventory: import('../models/PowerUpModel.js').PowerUpInventoryModel,
+   *           entitlements: import('../models/EntitlementsModel.js').EntitlementsModel, getUserId: () => string }} deps
    */
-  constructor({ store, api, inventory, getUserId }) { this.store = store; this.api = api; this.inventory = inventory; this.getUserId = getUserId; }
-
-  /** Packs para dibujar la tienda: el catálogo del juego + el precio que informa la tienda. Sin precio no se ofrece. */
-  async offers() {
-    const products = await this.store.getProducts(Object.keys(PACKS));
-    return products.filter((p) => Object.hasOwn(PACKS, p.productId)).map((p) => ({ ...PACKS[p.productId], productId: p.productId, priceLabel: p.priceLabel }));
+  constructor({ store, api, inventory, entitlements, getUserId }) {
+    this.store = store; this.api = api; this.inventory = inventory; this.entitlements = entitlements; this.getUserId = getUserId;
   }
+
+  /**
+   * Lo que se vende, para dibujar la tienda: el catálogo del juego + el precio que informa la tienda (sin precio no se ofrece).
+   * `permanent` trae «Sin anuncios» mientras no esté comprado.
+   */
+  async offers() {
+    const products = await this.store.getProducts([...Object.keys(PACKS), ...Object.keys(PERMANENT)]);
+    const from = (catalog) => products.filter((p) => Object.hasOwn(catalog, p.productId))
+      .map((p) => ({ ...catalog[p.productId], productId: p.productId, priceLabel: p.priceLabel }));
+    return { packs: from(PACKS), permanent: from(PERMANENT).filter((o) => !this.entitlements.has(o.entitlement)) };
+  }
+
+  /** Trae del servidor lo que la cuenta tiene comprado (al abrir la app). */
+  async sync() { this.#apply(await this.api.request('GET', '/purchases')); }
+
+  /** Ajustes → «Restaurar compras» (lo exige Apple para las compras permanentes). */
+  async restore() {
+    for (const purchase of await this.store.restorablePurchases()) if (Object.hasOwn(PERMANENT, purchase.productId)) await this.#deliver(purchase);
+    return this.entitlements.adFree;
+  }
+
+  #apply(owned) { this.inventory.replace(owned.powerups); this.entitlements.replace(owned.entitlements); }
 
   async buy(productId) {
     if (this.#busy) return PurchaseOutcome.PENDING;          // toque doble en «Comprar»
@@ -37,7 +56,7 @@ export class PurchaseController {
   async #deliver(purchase) {
     try {
       const result = await this.api.request('POST', '/purchases', purchase);
-      this.inventory.replace(result.powerups);
+      this.#apply(result);
       await this.store.finish(purchase).catch(() => {});     // si falla, se cierra en la próxima recuperación
       return PurchaseOutcome.DELIVERED;
     } catch (error) {

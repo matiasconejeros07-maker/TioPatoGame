@@ -44,8 +44,15 @@ export class NativeStoreService {
     return transactions.map(toPurchase);
   }
 
+  async restorablePurchases() {
+    await this.#configure();
+    if (isIos()) await NativePurchases.restorePurchases();      // pide a StoreKit que se ponga al día con el Apple ID
+    const { purchases } = await NativePurchases.getPurchases({ productType: PURCHASE_TYPE.INAPP, onlyCurrentEntitlements: true });
+    return purchases.map(toPurchase);
+  }
+
   async finish(purchase) {
-    // En Android el servidor ya consumió la compra en Google Play; en iOS hay que sacarla de la cola de StoreKit.
+    // En Android el servidor ya consumió (o confirmó) la compra en Google Play; en iOS hay que sacarla de la cola de StoreKit.
     if (purchase.store === 'apple') await NativePurchases.finishTransaction({ transactionId: purchase.transactionId });
   }
 }

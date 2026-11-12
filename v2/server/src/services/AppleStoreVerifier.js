@@ -23,7 +23,7 @@ export class AppleStoreVerifier {
   }
 
   /** @returns {Promise<{ transactionId: string, productId: string, quantity: number, environment: string, receipt: object }>} */
-  async verify({ transactionId, productId, userId }) {
+  async verify({ transactionId, productId, userId, consumable = true }) {
     if (!/^\d{1,32}$/.test(transactionId ?? '')) throw new InvalidPurchaseError('id de transacción inválido');
     const authorization = 'Bearer ' + (await this.#token());
     for (const [environment, host] of HOSTS) {
@@ -37,9 +37,10 @@ export class AppleStoreVerifier {
       const tx = decodeJwt((await response.json()).signedTransactionInfo).payload;
       if (tx.bundleId !== this.config.bundleId) throw new InvalidPurchaseError('la compra es de otra app');
       if (tx.productId !== productId) throw new InvalidPurchaseError('la compra es de otro producto');
-      if (tx.type !== 'Consumable') throw new InvalidPurchaseError('el producto no es consumible');
+      if (tx.type !== (consumable ? 'Consumable' : 'Non-Consumable')) throw new InvalidPurchaseError('tipo de producto inesperado');
       if (tx.revocationDate) throw new InvalidPurchaseError('la compra fue reembolsada');
-      if (tx.appAccountToken?.toLowerCase() !== userId) throw new InvalidPurchaseError('la compra es de otra cuenta');
+      // Un consumible es de la cuenta que lo compró. Una compra permanente es del Apple ID: se puede restaurar en otra cuenta del juego.
+      if (consumable && tx.appAccountToken?.toLowerCase() !== userId) throw new InvalidPurchaseError('la compra es de otra cuenta');
       return { transactionId: String(tx.transactionId), productId, quantity: tx.quantity ?? 1, environment, receipt: tx };
     }
     throw new InvalidPurchaseError('Apple no conoce esa transacción');

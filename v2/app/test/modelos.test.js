@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PowerUpInventoryModel, MatchPowerUpsModel, ActivationRefusal } from '../src/models/PowerUpModel.js';
 import { AdPolicyModel } from '../src/models/AdPolicyModel.js';
+import { ProfileModel } from '../src/models/ProfileModel.js';
 import { GameFlowModel, GameState } from '../src/models/GameFlowModel.js';
 
 test('power-ups: duran exactamente 10 segundos', () => {
@@ -35,17 +36,22 @@ test('power-ups: máximo 3 por partida, solo si quedan, y la partida siguiente p
   assert.equal(new MatchPowerUpsModel(inventory).activate('slow', 0).ok, true);
 });
 
-test('anuncios: nunca en las primeras partidas, ni seguidos, ni tras una partida muy corta', () => {
+test('anuncios: toca uno cada 5 partidas, y si no se pudo mostrar queda pendiente', () => {
   const policy = new AdPolicyModel();
-  const minute = 60_000;
-  const play = (now, lastMatchMs = 40_000) => { policy.recordMatch(); return policy.shouldShow({ now, lastMatchMs }); };
-  assert.deepEqual([play(1 * minute), play(2 * minute)], [false, false], 'partidas de gracia');
-  assert.equal(play(3 * minute, 5_000), false, 'partida de 5 s: sin anuncio');
-  assert.equal(play(4 * minute), true);
-  policy.recordAdShown(4 * minute);
-  assert.deepEqual([play(4.2 * minute), play(4.4 * minute)], [false, false], 'faltan partidas');
-  assert.equal(play(4.6 * minute), false, 'ya van 3 partidas pero no han pasado 2,5 minutos');
-  assert.equal(play(7 * minute), true);
+  const due = [];
+  for (let match = 1; match <= 12; match++) { policy.recordMatch(); due.push(policy.isDue); if (policy.isDue && match !== 5) policy.recordAdShown(); }
+  // partida 5: tocaba pero no se mostró → sigue pendiente en la 6, donde sí sale; el siguiente, 5 partidas después (la 11)
+  assert.deepEqual(due, [false, false, false, false, true, true, false, false, false, false, true, false]);
+});
+
+test('perfil: sabe si ya puede cambiar el nombre y cuántos días faltan', () => {
+  const profile = new ProfileModel();
+  assert.equal(profile.canChangeName(), true);
+  const now = Date.parse('2026-11-12T12:00:00Z');
+  profile.update({ displayName: 'Ana', nextChangeAt: '2026-12-12T12:00:00.000Z' });
+  assert.deepEqual([profile.canChangeName(now), profile.daysUntilNameChange(now)], [false, 30]);
+  assert.equal(profile.daysUntilNameChange(now + 29.5 * 86_400_000), 1);
+  assert.equal(profile.canChangeName(now + 30 * 86_400_000), true);
 });
 
 test('estados: no se puede saltar a un anuncio desde una partida en curso', () => {

@@ -3,7 +3,7 @@
 import { newNonce, sign } from '../../../shared/signature.js';
 
 export class ApiError extends Error {
-  constructor(status, code) { super(code); this.status = status; this.code = code; }
+  constructor(status, code, details = {}) { super(code); this.status = status; this.code = code; this.details = details; }
 }
 
 export class ApiClient {
@@ -44,7 +44,7 @@ export class ApiClient {
     });
     if (response.status === 204) return null;
     const json = await response.json().catch(() => ({}));
-    if (!response.ok) throw new ApiError(response.status, json.error ?? 'error');
+    if (!response.ok) throw new ApiError(response.status, json.error ?? 'error', json);
     return json;
   }
 }

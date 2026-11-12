@@ -1,4 +1,5 @@
 import { HttpError } from '../services/errors.js';
+import { NAME_CHANGE_DAYS } from '../../../shared/names.js';
 
 const sha256Hex = async (text) =>
   [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -31,6 +32,7 @@ export class AccountRepository {
         INSERT INTO powerup_inventory (user_id, powerup_id, quantity)
         SELECT ${legacy.id}, powerup_id, quantity FROM powerup_inventory WHERE user_id = ${current.id}
         ON CONFLICT (user_id, powerup_id) DO UPDATE SET quantity = powerup_inventory.quantity + EXCLUDED.quantity`;
+      await tx`UPDATE entitlements SET user_id = ${legacy.id} WHERE user_id = ${current.id}`;
       await tx`UPDATE powerup_ledger SET user_id = ${legacy.id} WHERE user_id = ${current.id}`;
       await tx`UPDATE purchases SET user_id = ${legacy.id} WHERE user_id = ${current.id}`;
       await tx`UPDATE identities SET user_id = ${legacy.id} WHERE user_id = ${current.id}`;
@@ -40,6 +42,29 @@ export class AccountRepository {
       await tx`UPDATE users SET status = 'active', claimed_at = now(), legacy_email = NULL WHERE id = ${legacy.id}`;
       return legacy.id;
     });
+  }
+
+  /**
+   * Cambia el nombre del jugador: único (sin distinguir mayúsculas ni tildes) y como mucho una vez cada 30 días.
+   * La condición del plazo va en el mismo UPDATE, así dos peticiones a la vez no logran dos cambios.
+   * @param {{ displayName: string, key: string }} name  ya validado con parseName()
+   * @returns {Promise<{ displayName: string, nextChangeAt: string }>}
+   */
+  async rename(userId, name) {
+    let row;
+    try {
+      [row] = await this.sql`
+        UPDATE users SET display_name = ${name.displayName}, name_key = ${name.key}, name_changed_at = now()
+        WHERE id = ${userId} AND (name_changed_at IS NULL OR name_changed_at <= now() - make_interval(days => ${NAME_CHANGE_DAYS}))
+        RETURNING display_name, name_changed_at + make_interval(days => ${NAME_CHANGE_DAYS}) AS next_change_at`;
+    } catch (error) {
+      if (error.code === '23505') throw new HttpError(409, 'nombre_ocupado');      // otro jugador ya tiene ese nombre
+      throw error;
+    }
+    if (row) return { displayName: row.display_name, nextChangeAt: row.next_change_at.toISOString() };
+    const [user] = await this.sql`SELECT name_changed_at + make_interval(days => ${NAME_CHANGE_DAYS}) AS next_change_at FROM users WHERE id = ${userId}`;
+    if (!user) throw new HttpError(401, 'sesion_invalida');
+    throw new HttpError(429, 'cambio_de_nombre_en_espera', undefined, { nextChangeAt: user.next_change_at.toISOString() });
   }
 
   /**

@@ -8,7 +8,7 @@ import { HttpError } from './services/errors.js';
 export function createApp({ sessions, nonces, masterSecret, purchaseService, accounts, firebaseTokens, now }) {
   const app = new Hono();
   app.onError((error, c) => {
-    if (error instanceof HttpError) return c.json({ error: error.code }, error.status);
+    if (error instanceof HttpError) return c.json({ error: error.code, ...error.details }, error.status);
     console.error(error);
     return c.json({ error: 'error_interno' }, 500);
   });

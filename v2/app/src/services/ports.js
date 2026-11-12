@@ -26,6 +26,7 @@
  * @property {(productIds: string[]) => Promise<StoreProduct[]>} getProducts
  * @property {(productId: string, userId: string) => Promise<StorePurchase|null>} purchase   null si el jugador canceló
  * @property {() => Promise<StorePurchase[]>} pendingPurchases   pagadas pero aún sin entregar
+ * @property {() => Promise<StorePurchase[]>} restorablePurchases   compras permanentes de la cuenta de la tienda («Restaurar compras»)
  * @property {(purchase: StorePurchase) => Promise<void>} finish  cierra la compra en el teléfono, ya entregada
  *
  * @typedef {object} Api

@@ -12,15 +12,16 @@ import { deriveSessionKey, newNonce, sign } from '../../shared/signature.js';
 import { createTestDatabase, hasDatabase } from '../../test-support/db.js';
 
 const MASTER = 'secreto-maestro-de-prueba';
+const NO_ADS = 'cl.tiopato.sinanuncios';
 const PACK = 'cl.tiopato.pack.inicial';       // entrega slow ×3 y wide ×2
 
 /** Tienda de mentira: conoce las compras que se le «registran» y cuenta cuántas veces se cerró cada una. */
 class FakeStore {
   known = new Map(); closed = []; failClose = false;
-  async verify({ transactionId, purchaseToken, productId, userId }) {
+  async verify({ transactionId, purchaseToken, productId, userId, consumable }) {
     const tx = this.known.get(transactionId ?? purchaseToken);
-    if (!tx || tx.productId !== productId || tx.userId !== userId) throw new InvalidPurchaseError('desconocida');
-    return { transactionId: tx.orderId, productId, quantity: tx.quantity ?? 1, environment: 'production', receipt: { orderId: tx.orderId }, purchaseToken };
+    if (!tx || tx.productId !== productId || (consumable && tx.userId !== userId)) throw new InvalidPurchaseError('desconocida');
+    return { transactionId: tx.orderId, productId, quantity: tx.quantity ?? 1, environment: 'production', receipt: { orderId: tx.orderId }, purchaseToken, consumable };
   }
   async close(verified) { if (this.failClose) throw new StoreUnavailableError('caída'); this.closed.push(verified.transactionId); }
 }
@@ -87,12 +88,12 @@ test('compras: se entregan una sola vez, solo si la tienda las confirma y solo a
   const purchase = { store: 'google', productId: PACK, purchaseToken: 'token-de-google-000000001' };
 
   const first = await ana.call('POST', '/purchases', purchase);
-  assert.deepEqual(first.json, { granted: true, powerups: { slow: 3, wide: 2 } });
+  assert.deepEqual(first.json, { granted: true, powerups: { slow: 3, wide: 2 }, entitlements: [] });
   assert.deepEqual(stores.google.closed, ['GPA.1'], 'se consumió en la tienda');
 
   // la app reenvía la misma compra (p. ej. se cortó internet antes de recibir la respuesta): no se duplica
   const again = await Promise.all([ana.call('POST', '/purchases', purchase), ana.call('POST', '/purchases', purchase)]);
-  assert.deepEqual(again.map((r) => r.json), [{ granted: false, powerups: { slow: 3, wide: 2 } }, { granted: false, powerups: { slow: 3, wide: 2 } }]);
+  assert.deepEqual(again.map((r) => r.json), [{ granted: false, powerups: { slow: 3, wide: 2 }, entitlements: [] }, { granted: false, powerups: { slow: 3, wide: 2 }, entitlements: [] }]);
   assert.deepEqual(stores.google.closed, ['GPA.1']);
 
   // recibo inventado (Lucky Patcher / IAP Cracker): la tienda no lo conoce
@@ -120,8 +121,30 @@ test('compras: si la tienda se cae al cerrar la compra, lo entregado queda y el 
   assert.deepEqual([down.status, down.json.error], [503, 'tienda_no_disponible']);
   stores.apple.failClose = false;
   const retry = await ana.call('POST', '/purchases', purchase);
-  assert.deepEqual(retry.json, { granted: false, powerups: { slow: 6, wide: 4 } }, 'cantidad 2 = el doble, entregado una vez');
+  assert.deepEqual(retry.json, { granted: false, powerups: { slow: 6, wide: 4 }, entitlements: [] }, 'cantidad 2 = el doble, entregado una vez');
   assert.deepEqual(stores.apple.closed, ['2000000123456789']);
+});
+
+test('«Sin anuncios»: es permanente, no se duplica y se puede restaurar en otra cuenta (una a la vez)', { skip }, async (t) => {
+  const { sql, stores, newPlayer } = await setup(t);
+  const ana = await newPlayer('Ana');
+  stores.apple.known.set('2000000000000009', { orderId: '2000000000000009', productId: NO_ADS, userId: ana.id });
+  const purchase = { store: 'apple', productId: NO_ADS, transactionId: '2000000000000009' };
+
+  assert.deepEqual((await ana.call('GET', '/purchases')).json, { powerups: {}, entitlements: [] });
+  assert.deepEqual((await ana.call('POST', '/purchases', purchase)).json, { granted: true, powerups: {}, entitlements: ['no_ads'] });
+  assert.deepEqual((await ana.call('POST', '/purchases', purchase)).json, { granted: false, powerups: {}, entitlements: ['no_ads'] });
+  assert.equal(stores.apple.closed.length, 1);
+
+  // Ana elimina su cuenta y vuelve a empezar: «Restaurar compras» le devuelve lo que pagó
+  await ana.call('DELETE', '/account');
+  const ana2 = await newPlayer('Ana otra vez');
+  assert.deepEqual((await ana2.call('POST', '/purchases', purchase)).json, { granted: true, powerups: {}, entitlements: ['no_ads'] });
+  // si la restaura en otra cuenta, se mueve: no quedan dos cuentas sin anuncios con un solo pago
+  const beto = await newPlayer('Beto');
+  assert.deepEqual((await beto.call('POST', '/purchases', purchase)).json.entitlements, ['no_ads']);
+  assert.deepEqual((await ana2.call('GET', '/purchases')).json.entitlements, []);
+  assert.equal((await sql`SELECT count(*)::int AS n FROM entitlements`)[0].n, 1);
 });
 
 test('cuenta antigua: se enlaza una sola vez y conserva saldo, racha y lo comprado en la V2', { skip }, async (t) => {
@@ -173,4 +196,32 @@ test('eliminar cuenta: borra todo lo del jugador, conserva la compra sin dueño 
            (SELECT count(*) FROM purchases WHERE user_id IS NULL)::int AS orphan_purchases, (SELECT count(*) FROM account_deletions)::int AS deletions`;
   assert.deepEqual({ ...left }, { users: 0, wallets: 0, devices: 0, sessions: 0, powerups: 0, orphan_purchases: 1, deletions: 1 });
   assert.equal((await ana.call('DELETE', '/account')).status, 401, 'la sesión ya no existe');
+});
+
+test('cambiar nombre: único, validado y una sola vez cada 30 días', { skip }, async (t) => {
+  const { sql, newPlayer } = await setup(t);
+  const ana = await newPlayer('Ana', { name_key: 'ana' }), beto = await newPlayer('Beto', { name_key: 'beto' });
+
+  for (const name of ['ab', 'NombreDemasiadoLargo', '¡¡¡!!!', 42]) assert.equal((await ana.call('PUT', '/account/name', { name })).status, 422, String(name));
+  const taken = await ana.call('PUT', '/account/name', { name: 'BÉTO' });
+  assert.deepEqual([taken.status, taken.json.error], [409, 'nombre_ocupado'], 'mayúsculas y tildes no hacen un nombre distinto');
+
+  // dos intentos a la vez: solo uno cambia el nombre
+  const both = await Promise.all([ana.call('PUT', '/account/name', { name: 'Anita' }), ana.call('PUT', '/account/name', { name: 'Anota' })]);
+  assert.deepEqual(both.map((r) => r.status).sort(), [200, 429]);
+  const done = both.find((r) => r.status === 200).json, waiting = both.find((r) => r.status === 429).json;
+  assert.equal(waiting.error, 'cambio_de_nombre_en_espera');
+  assert.equal(waiting.nextChangeAt, done.nextChangeAt);
+  const days = (new Date(done.nextChangeAt) - Date.now()) / 86_400_000;
+  assert.ok(days > 29.99 && days < 30.01);
+  const [row] = await sql`SELECT display_name, name_key FROM users WHERE id = ${ana.id}`;
+  assert.deepEqual([row.display_name, row.name_key], [done.displayName, done.displayName.toLowerCase()]);
+
+  // a los 29 días todavía no; a los 30 sí. El nombre que dejó queda libre para otro.
+  await sql`UPDATE users SET name_changed_at = now() - interval '29 days' WHERE id = ${ana.id}`;
+  assert.equal((await ana.call('PUT', '/account/name', { name: 'Ana María' })).status, 429);
+  await sql`UPDATE users SET name_changed_at = now() - interval '30 days' WHERE id = ${ana.id}`;
+  assert.deepEqual((await ana.call('PUT', '/account/name', { name: '  Ana   María ' })).json.displayName, 'Ana María');
+  assert.equal((await sql`SELECT name_key FROM users WHERE id = ${ana.id}`)[0].name_key, 'ana.maria');
+  assert.equal((await beto.call('PUT', '/account/name', { name: done.displayName })).status, 200);
 });

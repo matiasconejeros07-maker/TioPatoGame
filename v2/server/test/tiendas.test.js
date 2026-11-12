@@ -42,6 +42,9 @@ test('Apple: rechaza reembolsos, otra app, otro producto, otra cuenta, ids raros
     const { verifier } = apple({ [PROD]: json({ signedTransactionInfo: fakeJws(appleTx(over)) }) });
     await assert.rejects(verifier.verify({ transactionId: '2000000123', productId: PACK, userId: USER }), InvalidPurchaseError, JSON.stringify(over));
   }
+  // una compra permanente es del Apple ID (se puede restaurar), pero tiene que ser de ese tipo
+  const permanent = apple({ [PROD]: json({ signedTransactionInfo: fakeJws(appleTx({ type: 'Non-Consumable', appAccountToken: 'otra-cuenta' })) }) });
+  assert.equal((await permanent.verifier.verify({ transactionId: '2000000123', productId: PACK, userId: USER, consumable: false })).transactionId, '2000000123');
   const { verifier, calls } = apple({});
   await assert.rejects(verifier.verify({ transactionId: '../../x', productId: PACK, userId: USER }), InvalidPurchaseError);
   assert.equal(calls.length, 0, 'un id con formato raro ni siquiera se consulta');
@@ -84,6 +87,8 @@ test('Google: acepta la compra pagada, pide acceso con un JWT RS256 de la cuenta
 
   await verifier.close(result);
   assert.deepEqual([calls[2].init.method, calls[2].url.endsWith(TOKEN + ':consume')], ['POST', true]);
+  await verifier.close({ ...result, consumable: false });
+  assert.equal(calls[3].url.endsWith(TOKEN + ':acknowledge'), true, 'una compra permanente se confirma, no se consume');
   assert.equal(calls.filter((c) => c.url.includes('oauth2')).length, 1, 'el acceso se reutiliza');
 });
 

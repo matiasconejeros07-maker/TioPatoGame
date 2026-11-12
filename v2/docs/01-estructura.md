@@ -8,14 +8,17 @@ v2/
 │   ├── src/
 │   │   ├── models/             MODELO: estado y reglas del juego. No conoce pantallas ni plugins.
 │   │   │   ├── GameFlowModel.js      estados (menú, partida, pausa de anuncios…) y transiciones válidas
-│   │   │   ├── AdPolicyModel.js      cuándo corresponde un anuncio
+│   │   │   ├── AdPolicyModel.js      cuándo corresponde un anuncio (uno cada 5 partidas)
+│   │   │   ├── EntitlementsModel.js  derechos permanentes («Sin anuncios»)
+│   │   │   ├── ProfileModel.js       nombre y cuándo se puede volver a cambiar
 │   │   │   └── PowerUpModel.js       inventario y reglas: 10 s exactos, máximo 3 por partida
 │   │   ├── views/              VISTA: dibuja y avisa de los toques. No decide nada. (paso 4)
 │   │   ├── controllers/        CONTROLADOR: recibe los toques, usa los modelos y los servicios
 │   │   │   ├── GameFlowController.js controlador de estados: arranque, partidas, pausa de anuncios
 │   │   │   ├── ConsentController.js  consentimiento GDPR/CCPA
 │   │   │   ├── AdsController.js      interstitials entre partidas
-│   │   │   └── PurchaseController.js compras con dinero real
+│   │   │   ├── PurchaseController.js compras con dinero real y «Restaurar compras»
+│   │   │   └── ProfileController.js  cambiar nombre (una vez cada 30 días)
 │   │   ├── services/           puertas al mundo exterior
 │   │   │   ├── ports.js              contratos (qué necesita el juego de la plataforma)
 │   │   │   ├── ApiClient.js          cliente de la API, firma HMAC cada petición
@@ -36,7 +39,8 @@ v2/
 │   └── wrangler.toml
 ├── shared/                     lo que comparten app y servidor
 │   ├── signature.js            la fórmula de la firma (una sola implementación)
-│   └── catalog.js              power-ups, packs y sus reglas
+│   ├── catalog.js              power-ups, packs, «Sin anuncios» y sus reglas
+│   └── names.js                reglas del nombre de jugador
 ├── db/migrations/              esquema de PostgreSQL
 ├── migracion/                  Firebase → PostgreSQL + Redis
 └── docs/
@@ -75,7 +79,7 @@ La V1 es un solo `index.html` de ~418 KB con todo mezclado. Este es el destino d
 
 | Paso | Contenido | Estado |
 |---|---|---|
-| 1 | Estructura, esquema de la base, migración de Firebase, compras, anuncios, consentimiento, eliminar cuenta, firma HMAC | **hecho y probado** (este paso) |
+| 1 | Estructura, esquema de la base, migración de Firebase, compras, «Sin anuncios», anuncios, consentimiento, cambiar nombre, eliminar cuenta, firma HMAC | **hecho y probado** (este paso) |
 | 2 | Inicio de sesión con Apple y Play Games, atestación (Play Integrity / App Attest), Device Binding, Cloudflare WAF | pendiente |
 | 3 | Partidas y economía en el servidor (cobro, tienda, racha, ruleta, misiones) y marcadores en Redis | pendiente |
 | 4 | Pasar el juego de `index.html` a modelos y vistas; interfaz premium, tienda y marcadores nuevos, puntos rojos | pendiente |
