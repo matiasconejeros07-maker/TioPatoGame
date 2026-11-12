@@ -1,0 +1,73 @@
+name: Pruebas
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar
+        working-directory: pruebas
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Reglas de Firebase (economía y antitrampas)
+        working-directory: pruebas
+        run: node reglas.test.js
+      - name: Prueba de humo en el navegador
+        working-directory: pruebas
+        run: node humo.test.js
+      - name: Racha diaria de punta a punta (juego + reglas reales)
+        working-directory: pruebas
+        run: node racha.test.js
+      - name: Emblema de perfil de punta a punta
+        working-directory: pruebas
+        run: node perfil.test.js
+      - name: Misiones (estadísticas, misiones del día, logros y premios exactos)
+        working-directory: pruebas
+        run: node misiones.test.js
+      - name: Marcador de tiempo jugado (sumar, Top 25 y reglas sin publicar)
+        working-directory: pruebas
+        run: node tiempo.test.js
+      - name: Ruleta diaria (un giro por día, premio que decide el servidor)
+        working-directory: pruebas
+        run: node ruleta.test.js
+      - name: Pantalla de carga con los Tíos Patitos saltando y ruleta del día primero al abrir
+        working-directory: pruebas
+        run: node carga.test.js
+      - name: Marcadores (Top 30, semanal, tiempo jugado e insignias)
+        working-directory: pruebas
+        run: node marcadores.test.js
+      - name: Correo en las cuentas (crear, agregar a una antigua, verificar y recuperar)
+        working-directory: pruebas
+        run: node correo.test.js
+      - name: Grupo VIP (WhatsApp de quien desbloquea el personaje secreto)
+        working-directory: pruebas
+        run: node vip.test.js
+      - name: Colores del juego (azul de siempre, tienda de colores y que se lean bien)
+        working-directory: pruebas
+        run: node colores.test.js
+      - name: Marco dorado (quién tiene el personaje secreto y su marco en los marcadores)
+        working-directory: pruebas
+        run: node dorado.test.js
+      - name: Edición limitada (Tío Pato Teletón, se vende hasta una fecha y quien la compró la conserva)
+        working-directory: pruebas
+        run: node limitada.test.js
+      - name: Los pesos se suman (sesión vencida, saldos enormes y diagnóstico)
+        working-directory: pruebas
+        run: node pesos.test.js
+      - name: La carpeta que se publica (dist/) está completa y limpia
+        run: node pruebas/dist.test.js
+      - name: El juego funciona desde dist/ (prueba de humo)
+        working-directory: pruebas
+        run: JUEGO=../dist/ node humo.test.js
+      - name: Las reglas coinciden con el catálogo (tienda.js)
+        run: |
+          cp firebase-rules.json /tmp/reglas-antes.json
+          node herramientas/generar-reglas.js
+          diff -q firebase-rules.json /tmp/reglas-antes.json

@@ -1,0 +1,36 @@
+# Cabeceras de seguridad y de caché para Cloudflare Pages (y Netlify). Se copian como `_headers` a la carpeta dist/ al publicar.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+# La página, la configuración y el service worker se piden siempre frescos (así cada versión nueva llega al tiro)
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+/config.js
+  Cache-Control: no-cache
+/tienda.js
+  Cache-Control: no-cache
+/dialogos.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+# Imágenes: un día (el service worker las guarda además en el celular)
+/skins/*
+  Cache-Control: public, max-age=86400
+/trajes/*
+  Cache-Control: public, max-age=86400
+/fondos/*
+  Cache-Control: public, max-age=86400
+/icons/*
+  Cache-Control: public, max-age=86400
+/pato/*
+  Cache-Control: public, max-age=86400

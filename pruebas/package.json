@@ -1,0 +1,21 @@
+{
+  "name": "pruebas-tio-pato",
+  "private": true,
+  "license": "MIT",
+  "description": "Pruebas del juego: reglas de Firebase y humo en el navegador",
+  "scripts": {
+    "test": "node reglas.test.js && node humo.test.js && node racha.test.js && node perfil.test.js && node pesos.test.js && node correo.test.js && node tiempo.test.js && node misiones.test.js",
+    "reglas": "node reglas.test.js",
+    "humo": "node humo.test.js",
+    "racha": "node racha.test.js",
+    "pesos": "node pesos.test.js",
+    "correo": "node correo.test.js",
+    "tiempo": "node tiempo.test.js",
+    "misiones": "node misiones.test.js",
+    "perfil": "node perfil.test.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0",
+    "targaryen": "^3.1.0"
+  }
+}
