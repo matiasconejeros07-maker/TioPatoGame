@@ -52,11 +52,14 @@ La V2 del juego es **la V1 completa** (`v2/juego/`, copia de `index.html`, `tien
 
 Las pruebas de la V1 corren sobre el juego V2 (`JUEGO=../v2/juego`):
 
-| Prueba | Resultado |
+| Prueba | Resultado sobre la V2 |
 |---|---|
-| Humo (partida, física, burbujas, tienda, accesibilidad…) | 155 de 155 |
-| Racha, marcadores, emblema | ver el último informe |
+| Humo (partida, física, burbujas, tienda, accesibilidad…) | 155 de 155. En otras dos corridas, 154: falló «tras recargar siguen apagados», que también falla con la V1 original en este entorno (1 de cada 6 recargas el navegador de pruebas pierde lo guardado de una página abierta como archivo) |
+| Racha diaria | 51 de 51 |
+| Marcadores | 51 de 51 (ahora con 5 pestañas) |
+| Emblema | 16 de 16 |
 | Ruleta | falla en el mismo punto también con la V1 original («con el último giro de ayer, el punto rojo vuelve»): es un problema previo de esa prueba |
+| Reglas de la V2 (`reglas-v2.test.js`) | 18 de 18 |
 
 ## Pendientes
 
