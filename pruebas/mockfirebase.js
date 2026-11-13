@@ -98,6 +98,7 @@ async function mocks(ctx) {
 async function newPage(b, opts = {}) {
   const ctx = await b.newContext({ viewport: opts.viewport || { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: 'block' });
   await mocks(ctx); const p = await ctx.newPage(); const errs = [];
+  await ctx.addInitScript(() => { try { if (!localStorage.getItem('gana-al-tio-pato-v2-prefs')) localStorage.setItem('gana-al-tio-pato-v2-prefs', JSON.stringify({ consentimiento: 'si' })); } catch (e) {} });   // V2: el aviso de privacidad ya respondido (en la V1 no existe)
   p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && !/Failed to load resource|net::ERR/.test(m.text()) && errs.push(m.text()));
   await p.goto(PAGE); await p.waitForTimeout(700); return { ctx, p, errs };
 }

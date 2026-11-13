@@ -71,3 +71,17 @@ jobs:
           cp firebase-rules.json /tmp/reglas-antes.json
           node herramientas/generar-reglas.js
           diff -q firebase-rules.json /tmp/reglas-antes.json
+      - name: V2 · reglas (marcador Arcade, power-ups, cambio de nombre, sonidos)
+        working-directory: pruebas
+        run: node reglas-v2.test.js
+      - name: V2 · las reglas coinciden con su catálogo (v2/juego/tienda.js)
+        run: |
+          cp v2/juego/firebase-rules.json /tmp/reglas-v2-antes.json
+          node herramientas/generar-reglas.js v2/juego
+          diff -q v2/juego/firebase-rules.json /tmp/reglas-v2-antes.json
+      - name: V2 · prueba de humo de la V1 corriendo sobre el juego V2
+        working-directory: pruebas
+        run: |
+          for d in skins trajes fondos pato icons oro; do ln -sfn ../../$d ../v2/juego/$d; done
+          cp ../config.js ../v2/juego/config.js
+          JUEGO=../v2/juego node humo.test.js

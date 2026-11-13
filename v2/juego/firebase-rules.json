@@ -1,0 +1,568 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "runs": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['s', 'b', 'r'])",
+        "s": {
+          ".validate": "newData.isNumber() && (newData.val() === now || newData.val() === data.val())"
+        },
+        "b": {
+          ".validate": "newData.isString() && (newData.val() === 'peso1' || root.child('wallets').child($uid).child('own').child('ball_' + newData.val()).val() === true)"
+        },
+        "r": {
+          ".validate": "newData.isNumber() && newData.val() === (newData.parent().child('b').val() === 'peso1' ? 1 : newData.parent().child('b').val() === 'peso5' ? 2 : newData.parent().child('b').val() === 'peso10' ? 3 : newData.parent().child('b').val() === 'peso50' ? 4 : newData.parent().child('b').val() === 'peso100' ? 5 : newData.parent().child('b').val() === 'peso500' ? 6 : newData.parent().child('b').val() === 'b1000' ? 7 : newData.parent().child('b').val() === 'b2000' ? 8 : newData.parent().child('b').val() === 'b5000' ? 9 : newData.parent().child('b').val() === 'b10000' ? 10 : newData.parent().child('b').val() === 'b20000' ? 20 : newData.parent().child('b').val() === 'plata' ? 100 : newData.parent().child('b').val() === 'oro' ? 500 : newData.parent().child('b').val() === 'diamante' ? 5000 : 0)"
+        },
+        "e": {
+          ".validate": "newData.isNumber() && newData.val() === now && !data.exists() && data.parent().child('s').exists() && newData.parent().child('s').val() === data.parent().child('s').val() && newData.parent().hasChildren(['s', 'b', 'r', 'h', 'p'])"
+        },
+        "h": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 500 && !data.exists() && newData.parent().hasChildren(['s', 'b', 'r', 'e', 'p']) && newData.val() * 450 <= now - newData.parent().child('s').val() + 3000"
+        },
+        "p": {
+          ".validate": "newData.isNumber() && !data.exists() && newData.parent().hasChildren(['s', 'b', 'r', 'e', 'h']) && newData.val() === newData.parent().child('r').val() * (newData.parent().child('h').val() + 100 * ((newData.parent().child('h').val() - (newData.parent().child('h').val() % 100)) / 100) * (((newData.parent().child('h').val() - (newData.parent().child('h').val() % 100)) / 100) - 1) / 2 + ((newData.parent().child('h').val() - (newData.parent().child('h').val() % 100)) / 100) * (newData.parent().child('h').val() - 100 * ((newData.parent().child('h').val() - (newData.parent().child('h').val() % 100)) / 100) + 1)) * (root.child('streaks').child($uid).child('bx').exists() && newData.parent().child('s').val() >= root.child('streaks').child($uid).child('bx').val() && newData.parent().child('s').val() < root.child('streaks').child($uid).child('bx').val() + (root.child('streaks').child($uid).child('bd').exists() ? root.child('streaks').child($uid).child('bd').val() : 600000) ? (root.child('streaks').child($uid).child('bm').exists() ? root.child('streaks').child($uid).child('bm').val() : 2) : 1)"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "scores": {
+      ".read": true,
+      ".indexOn": [
+        "s",
+        "k",
+        "ms"
+      ],
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && (!data.exists() || newData.child('s').val() >= data.child('s').val())",
+        ".validate": "newData.hasChildren(['n', 'k', 's', 't'])",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+        },
+        "k": {
+          ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9.]{3,24}$/) && (auth.token.email === newData.val() + '@tio-pato.invalid' || root.child('names').child(newData.val().replace('.', ',')).val() === auth.uid)"
+        },
+        "s": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 500 && newData.parent().parent().parent().child('runs').child($uid).child('e').exists() && newData.val() <= newData.parent().parent().parent().child('runs').child($uid).child('h').val()"
+        },
+        "t": {
+          ".validate": "newData.val() === now"
+        },
+        "a": {
+          ".validate": "newData.isString() && newData.val().matches(/^e[0-9A-Za-z_-]{4}([0-9A-Za-z_-]{4}){1,5}$/)"
+        },
+        "ms": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= (data.exists() ? data.val() : 0) && newData.val() <= 1000000000000 && newData.val() <= (data.exists() ? data.val() : 0) + ((newData.parent().parent().parent().child('runs').child($uid).child('e').val() - newData.parent().parent().parent().child('runs').child($uid).child('s').val()) < (newData.parent().parent().parent().child('runs').child($uid).child('h').val() * 4500 + 6000) ? (newData.parent().parent().parent().child('runs').child($uid).child('e').val() - newData.parent().parent().parent().child('runs').child($uid).child('s').val()) : (newData.parent().parent().parent().child('runs').child($uid).child('h').val() * 4500 + 6000)) && newData.parent().child('ml').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && root.child('wallets').child($uid).child('lr').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val()"
+        },
+        "ml": {
+          ".validate": "newData.isNumber() && newData.val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && newData.parent().parent().parent().child('runs').child($uid).child('e').exists() && (!data.exists() || newData.val() > data.val()) && root.child('wallets').child($uid).child('lr').val() === newData.val()"
+        },
+        "c": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 500 && newData.val() === newData.parent().child('s').val() && (!data.exists() || newData.val() > data.val())"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "weekly": {
+      ".read": true,
+      "$week": {
+        ".indexOn": [
+          "s"
+        ],
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && $week === ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) + ''",
+          ".validate": "newData.hasChildren(['n', 's', 't'])",
+          "n": {
+            ".validate": "newData.isString() && newData.val() === newData.parent().parent().parent().parent().child('scores').child($uid).child('n').val()"
+          },
+          "s": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 500 && newData.val() === newData.parent().parent().parent().parent().child('stats').child($uid).child('wm').val() && newData.parent().parent().parent().parent().child('stats').child($uid).child('w').val() === ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) && (!data.exists() || newData.val() >= data.val())"
+          },
+          "t": {
+            ".validate": "newData.val() === now"
+          },
+          "a": {
+            ".validate": "newData.isString() && newData.val().matches(/^e[0-9A-Za-z_-]{4}([0-9A-Za-z_-]{4}){1,5}$/)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "monthly": {
+      ".read": true,
+      "$mo": {
+        ".indexOn": [
+          "s"
+        ],
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && $mo === (((5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2 - (5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2) % 153) / 153) < 10 ? (1972 + 4 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461)) / 1461) + (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) * 100 + ((5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2 - (5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2) % 153) / 153) + 3 : (1973 + 4 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461)) / 1461) + (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) * 100 + ((5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2 - (5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2) % 153) / 153) - 9) + ''",
+          ".validate": "newData.hasChildren(['n', 's', 't'])",
+          "n": {
+            ".validate": "newData.isString() && newData.val() === newData.parent().parent().parent().parent().child('scores').child($uid).child('n').val()"
+          },
+          "s": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 500 && newData.val() === newData.parent().parent().parent().parent().child('stats').child($uid).child('mm').val() && newData.parent().parent().parent().parent().child('stats').child($uid).child('mo').val() === (((5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2 - (5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2) % 153) / 153) < 10 ? (1972 + 4 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461)) / 1461) + (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) * 100 + ((5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2 - (5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2) % 153) / 153) + 3 : (1973 + 4 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461)) / 1461) + (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) * 100 + ((5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2 - (5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2) % 153) / 153) - 9) && (!data.exists() || newData.val() >= data.val())"
+          },
+          "t": {
+            ".validate": "newData.val() === now"
+          },
+          "a": {
+            ".validate": "newData.isString() && newData.val().matches(/^e[0-9A-Za-z_-]{4}([0-9A-Za-z_-]{4}){1,5}$/)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "roles": {
+      ".read": true,
+      "$uid": {
+        ".validate": "newData.isString() && newData.val().matches(/^(tio|tia|dev)$/)"
+      }
+    },
+    "compradores": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && newData.exists() && root.child('wallets').child($uid).child('own').child('ch_millonario').val() === true",
+        ".validate": "newData.hasChildren(['n', 't'])",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+        },
+        "t": {
+          ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "marco": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && root.child('wallets').child($uid).child('own').child('ch_millonario').val() === true",
+        ".validate": "newData.val() === true && newData.parent().parent().child('compradores').child($uid).exists()"
+      }
+    },
+    "names": {
+      "$k": {
+        ".read": true,
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid && (auth.token.email === $k.replace(',', '.') + '@tio-pato.invalid' || (newData.parent().parent().child('mynames').child(auth.uid).val() === $k && !root.child('mynames').child(auth.uid).exists()))) || (data.val() === auth.uid && !newData.exists()))",
+        ".validate": "newData.isString() && newData.val().length <= 40 && $k.matches(/^[a-z0-9,]{3,24}$/)"
+      }
+    },
+    "mynames": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9,]{3,24}$/) && newData.parent().parent().child('names').child(newData.val()).val() === $uid"
+      }
+    },
+    "hist": {
+      ".read": true,
+      "$b": {
+        ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && $b.matches(/^([0-9]|[1-9][0-9]|[1-4][0-9][0-9]|500)$/)",
+        ".write": "auth != null && (newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().parent().child('scores').child(auth.uid).child('c').val() + '' === $b && (!root.child('scores').child(auth.uid).child('c').exists() || root.child('scores').child(auth.uid).child('c').val() + '' !== $b) || data.exists() && newData.val() === data.val() - 1 && root.child('scores').child(auth.uid).child('c').exists() && root.child('scores').child(auth.uid).child('c').val() + '' === $b && newData.parent().parent().child('scores').child(auth.uid).child('c').exists() && newData.parent().parent().child('scores').child(auth.uid).child('c').val() + '' !== $b)"
+      }
+    },
+    "streaks": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".validate": "newData.hasChildren(['n', 't'])",
+        "n": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 100000 && newData.val() === (data.parent().child('n').exists() ? (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) === ((data.parent().child('t').val() + (-10800000) - (data.parent().child('t').val() + (-10800000)) % 86400000) / 86400000) + 1 ? data.parent().child('n').val() + 1 : (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) > ((data.parent().child('t').val() + (-10800000) - (data.parent().child('t').val() + (-10800000)) % 86400000) / 86400000) ? 1 : -1)) : 1) && newData.parent().child('t').val() === now"
+        },
+        "t": {
+          ".validate": "newData.isNumber() && newData.val() === now && newData.parent().child('n').val() === (data.parent().child('n').exists() ? (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) === ((data.parent().child('t').val() + (-10800000) - (data.parent().child('t').val() + (-10800000)) % 86400000) / 86400000) + 1 ? data.parent().child('n').val() + 1 : (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) > ((data.parent().child('t').val() + (-10800000) - (data.parent().child('t').val() + (-10800000)) % 86400000) / 86400000) ? 1 : -1)) : 1)"
+        },
+        "bx": {
+          ".validate": "newData.isNumber() && (newData.val() === data.val() || (newData.val() === now && (!data.exists() || data.val() + (data.parent().child('bd').exists() ? data.parent().child('bd').val() : 600000) <= now) && ((newData.parent().child('bm').val() === 2 && (((newData.parent().child('x2').exists() && data.parent().child('x2').exists() && newData.parent().child('x2').val() + 1 === data.parent().child('x2').val()) && newData.parent().child('bd').val() === 600000) || ((newData.parent().child('y2').exists() && data.parent().child('y2').exists() && newData.parent().child('y2').val() + 1 === data.parent().child('y2').val()) && newData.parent().child('bd').val() === 300000))) || (newData.parent().child('bm').val() === 3 && (((newData.parent().child('x3').exists() && data.parent().child('x3').exists() && newData.parent().child('x3').val() + 1 === data.parent().child('x3').val()) && newData.parent().child('bd').val() === 600000) || ((newData.parent().child('y3').exists() && data.parent().child('y3').exists() && newData.parent().child('y3').val() + 1 === data.parent().child('y3').val()) && newData.parent().child('bd').val() === 300000))) || (newData.parent().child('bm').val() === 4 && (((newData.parent().child('x4').exists() && data.parent().child('x4').exists() && newData.parent().child('x4').val() + 1 === data.parent().child('x4').val()) && newData.parent().child('bd').val() === 600000) || ((newData.parent().child('y4').exists() && data.parent().child('y4').exists() && newData.parent().child('y4').val() + 1 === data.parent().child('y4').val()) && newData.parent().child('bd').val() === 300000)))))) "
+        },
+        "bd": {
+          ".validate": "newData.isNumber() && (newData.val() === data.val() || (newData.parent().child('bx').val() === now && (newData.val() === 600000 || newData.val() === 300000)))"
+        },
+        "bm": {
+          ".validate": "newData.isNumber() && (newData.val() === data.val() || (newData.parent().child('bx').val() === now && (newData.val() === 2 || newData.val() === 3 || newData.val() === 4))) "
+        },
+        "x2": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 99 && (newData.val() === (data.exists() ? data.val() : 0) || (newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().child('n').val() === 7 && newData.parent().child('t').val() === now) || (newData.val() === (data.exists() ? data.val() : 0) - 1 && newData.parent().child('bm').val() === 2 && newData.parent().child('bx').val() === now && newData.parent().child('bd').val() === 600000))"
+        },
+        "x3": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 99 && (newData.val() === (data.exists() ? data.val() : 0) || (newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().child('n').val() === 14 && newData.parent().child('t').val() === now) || (newData.val() === (data.exists() ? data.val() : 0) - 1 && newData.parent().child('bm').val() === 3 && newData.parent().child('bx').val() === now && newData.parent().child('bd').val() === 600000))"
+        },
+        "x4": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 99 && (newData.val() === (data.exists() ? data.val() : 0) || (newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().child('n').val() === 21 && newData.parent().child('t').val() === now) || (newData.val() === (data.exists() ? data.val() : 0) - 1 && newData.parent().child('bm').val() === 4 && newData.parent().child('bx').val() === now && newData.parent().child('bd').val() === 600000))"
+        },
+        "y2": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 99 && (newData.val() === (data.exists() ? data.val() : 0) || (newData.val() === (data.exists() ? data.val() : 0) + 1 && (newData.parent().parent().parent().child('ruleta').child($uid).child('c').exists() && newData.parent().parent().parent().child('ruleta').child($uid).child('c').val() === newData.parent().parent().parent().child('ruleta').child($uid).child('t').val() && root.child('ruleta').child($uid).child('t').val() === newData.parent().parent().parent().child('ruleta').child($uid).child('t').val() && (!root.child('ruleta').child($uid).child('c').exists() || root.child('ruleta').child($uid).child('c').val() !== newData.parent().parent().parent().child('ruleta').child($uid).child('t').val())) && (((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 4 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 8 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 11 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 13 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 14 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 15 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 17 ? 2 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 19 ? 3 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 20 ? 4 : 0) === 2) || (newData.val() === (data.exists() ? data.val() : 0) - 1 && newData.parent().child('bm').val() === 2 && newData.parent().child('bx').val() === now && newData.parent().child('bd').val() === 300000))"
+        },
+        "y3": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 99 && (newData.val() === (data.exists() ? data.val() : 0) || (newData.val() === (data.exists() ? data.val() : 0) + 1 && (newData.parent().parent().parent().child('ruleta').child($uid).child('c').exists() && newData.parent().parent().parent().child('ruleta').child($uid).child('c').val() === newData.parent().parent().parent().child('ruleta').child($uid).child('t').val() && root.child('ruleta').child($uid).child('t').val() === newData.parent().parent().parent().child('ruleta').child($uid).child('t').val() && (!root.child('ruleta').child($uid).child('c').exists() || root.child('ruleta').child($uid).child('c').val() !== newData.parent().parent().parent().child('ruleta').child($uid).child('t').val())) && (((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 4 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 8 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 11 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 13 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 14 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 15 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 17 ? 2 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 19 ? 3 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 20 ? 4 : 0) === 3) || (newData.val() === (data.exists() ? data.val() : 0) - 1 && newData.parent().child('bm').val() === 3 && newData.parent().child('bx').val() === now && newData.parent().child('bd').val() === 300000))"
+        },
+        "y4": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 99 && (newData.val() === (data.exists() ? data.val() : 0) || (newData.val() === (data.exists() ? data.val() : 0) + 1 && (newData.parent().parent().parent().child('ruleta').child($uid).child('c').exists() && newData.parent().parent().parent().child('ruleta').child($uid).child('c').val() === newData.parent().parent().parent().child('ruleta').child($uid).child('t').val() && root.child('ruleta').child($uid).child('t').val() === newData.parent().parent().parent().child('ruleta').child($uid).child('t').val() && (!root.child('ruleta').child($uid).child('c').exists() || root.child('ruleta').child($uid).child('c').val() !== newData.parent().parent().parent().child('ruleta').child($uid).child('t').val())) && (((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 4 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 8 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 11 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 13 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 14 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 15 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 17 ? 2 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 19 ? 3 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 20 ? 4 : 0) === 4) || (newData.val() === (data.exists() ? data.val() : 0) - 1 && newData.parent().child('bm').val() === 4 && newData.parent().child('bx').val() === now && newData.parent().child('bd').val() === 300000))"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "stats": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".validate": "newData.hasChildren(['g', 'r', 'sl', 'd', 'dg', 'dr', 'dm', 'dc'])",
+        "sl": {
+          ".validate": "newData.isNumber() && newData.val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && root.child('wallets').child($uid).child('lr').val() === newData.val() && newData.parent().parent().parent().child('runs').child($uid).child('e').exists() && newData.parent().parent().parent().child('runs').child($uid).child('h').val() >= 5 && (!data.exists() || newData.val() > data.val())"
+        },
+        "g": {
+          ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().child('sl').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('sl').exists() || data.parent().child('sl').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val())"
+        },
+        "r": {
+          ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + newData.parent().parent().parent().child('runs').child($uid).child('h').val() && newData.parent().child('sl').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('sl').exists() || data.parent().child('sl').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val())"
+        },
+        "d": {
+          ".validate": "newData.isNumber() && newData.val() === ((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) && newData.parent().child('sl').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('sl').exists() || data.parent().child('sl').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val()) && ((data.parent().child('d').exists() && data.parent().child('d').val() === newData.parent().child('d').val()) || newData.parent().child('dc').val() === 0)"
+        },
+        "dg": {
+          ".validate": "newData.isNumber() && newData.val() === ((data.parent().child('d').exists() && data.parent().child('d').val() === newData.parent().child('d').val()) ? data.parent().child('dg').val() : 0) + 1 && newData.parent().child('sl').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('sl').exists() || data.parent().child('sl').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val())"
+        },
+        "dr": {
+          ".validate": "newData.isNumber() && newData.val() === ((data.parent().child('d').exists() && data.parent().child('d').val() === newData.parent().child('d').val()) ? data.parent().child('dr').val() : 0) + newData.parent().parent().parent().child('runs').child($uid).child('h').val() && newData.parent().child('sl').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('sl').exists() || data.parent().child('sl').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val())"
+        },
+        "dm": {
+          ".validate": "newData.isNumber() && newData.val() === ((data.parent().child('d').exists() && data.parent().child('d').val() === newData.parent().child('d').val()) && data.parent().child('dm').val() > newData.parent().parent().parent().child('runs').child($uid).child('h').val() ? data.parent().child('dm').val() : newData.parent().parent().parent().child('runs').child($uid).child('h').val()) && newData.parent().child('sl').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('sl').exists() || data.parent().child('sl').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val())"
+        },
+        "dc": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 7 && ((!(data.parent().child('d').exists() && data.parent().child('d').val() === newData.parent().child('d').val()) && newData.val() === 0) || ((data.parent().child('d').exists() && data.parent().child('d').val() === newData.parent().child('d').val()) && newData.parent().child('d').val() === ((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) && newData.val() >= (data.exists() ? data.val() : 0) && !(((data.exists() ? data.val() : 0) % 2 >= 1) && !(newData.val() % 2 >= 1)) && !(((data.exists() ? data.val() : 0) % 4 >= 2) && !(newData.val() % 4 >= 2)) && !(((data.exists() ? data.val() : 0) % 8 >= 4) && !(newData.val() % 8 >= 4)) && (!((newData.val() % 2 >= 1) && !((data.exists() ? data.val() : 0) % 2 >= 1)) || ((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000)) * 5 + 0) % 7 % 3) === 0 ? newData.parent().child('dg').val() >= 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000)) * 5 + 0) % 7 % 3) === 1 ? newData.parent().child('dr').val() >= 50 : newData.parent().child('dm').val() >= 20)) && (!((newData.val() % 4 >= 2) && !((data.exists() ? data.val() : 0) % 4 >= 2)) || ((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000)) * 5 + 2) % 7 % 3) === 0 ? newData.parent().child('dg').val() >= 5 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000)) * 5 + 2) % 7 % 3) === 1 ? newData.parent().child('dr').val() >= 150 : newData.parent().child('dm').val() >= 40)) && (!((newData.val() % 8 >= 4) && !((data.exists() ? data.val() : 0) % 8 >= 4)) || ((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000)) * 5 + 4) % 7 % 3) === 0 ? newData.parent().child('dg').val() >= 10 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000)) * 5 + 4) % 7 % 3) === 1 ? newData.parent().child('dr').val() >= 400 : newData.parent().child('dm').val() >= 80))))"
+        },
+        "w": {
+          ".validate": "newData.isNumber() && newData.val() === ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) && newData.parent().child('sl').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('sl').exists() || data.parent().child('sl').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val()) && ((data.parent().child('w').exists() && data.parent().child('w').val() === newData.parent().child('w').val()) || newData.parent().child('wc').val() === 0)"
+        },
+        "wg": {
+          ".validate": "newData.isNumber() && newData.val() === ((data.parent().child('w').exists() && data.parent().child('w').val() === newData.parent().child('w').val()) ? data.parent().child('wg').val() : 0) + 1 && newData.parent().child('sl').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('sl').exists() || data.parent().child('sl').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val())"
+        },
+        "wr": {
+          ".validate": "newData.isNumber() && newData.val() === ((data.parent().child('w').exists() && data.parent().child('w').val() === newData.parent().child('w').val()) ? data.parent().child('wr').val() : 0) + newData.parent().parent().parent().child('runs').child($uid).child('h').val() && newData.parent().child('sl').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('sl').exists() || data.parent().child('sl').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val())"
+        },
+        "wm": {
+          ".validate": "newData.isNumber() && newData.val() === ((data.parent().child('w').exists() && data.parent().child('w').val() === newData.parent().child('w').val()) && data.parent().child('wm').val() > newData.parent().parent().parent().child('runs').child($uid).child('h').val() ? data.parent().child('wm').val() : newData.parent().parent().parent().child('runs').child($uid).child('h').val()) && newData.parent().child('sl').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('sl').exists() || data.parent().child('sl').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val())"
+        },
+        "wc": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 7 && ((!(data.parent().child('w').exists() && data.parent().child('w').val() === newData.parent().child('w').val()) && newData.val() === 0) || ((data.parent().child('w').exists() && data.parent().child('w').val() === newData.parent().child('w').val()) && newData.parent().child('w').val() === ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) && newData.val() >= (data.exists() ? data.val() : 0) && !(((data.exists() ? data.val() : 0) % 2 >= 1) && !(newData.val() % 2 >= 1)) && !(((data.exists() ? data.val() : 0) % 4 >= 2) && !(newData.val() % 4 >= 2)) && !(((data.exists() ? data.val() : 0) % 8 >= 4) && !(newData.val() % 8 >= 4)) && (!((newData.val() % 2 >= 1) && !((data.exists() ? data.val() : 0) % 2 >= 1)) || ((((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 0) % 17 % 5) === 0 && newData.parent().child('wg').val() >= 15) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 0) % 17 % 5) === 1 && newData.parent().child('wg').val() >= 20) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 0) % 17 % 5) === 2 && newData.parent().child('wr').val() >= 500) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 0) % 17 % 5) === 3 && newData.parent().child('wr').val() >= 700) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 0) % 17 % 5) === 4 && newData.parent().child('wm').val() >= 40))) && (!((newData.val() % 4 >= 2) && !((data.exists() ? data.val() : 0) % 4 >= 2)) || ((((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 7) % 17 % 5) === 0 && newData.parent().child('wg').val() >= 35) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 7) % 17 % 5) === 1 && newData.parent().child('wg').val() >= 45) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 7) % 17 % 5) === 2 && newData.parent().child('wr').val() >= 1500) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 7) % 17 % 5) === 3 && newData.parent().child('wr').val() >= 2000) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 7) % 17 % 5) === 4 && newData.parent().child('wm').val() >= 75))) && (!((newData.val() % 8 >= 4) && !((data.exists() ? data.val() : 0) % 8 >= 4)) || ((((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 14) % 17 % 5) === 0 && newData.parent().child('wg').val() >= 70) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 14) % 17 % 5) === 1 && newData.parent().child('wg').val() >= 90) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 14) % 17 % 5) === 2 && newData.parent().child('wr').val() >= 4000) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 14) % 17 % 5) === 3 && newData.parent().child('wr').val() >= 5500) || (((((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3 - (((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) + 3) % 7) / 7) * 13 + 14) % 17 % 5) === 4 && newData.parent().child('wm').val() >= 100)))))"
+        },
+        "ml": {
+          ".validate": "newData.isNumber() && newData.val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && root.child('wallets').child($uid).child('lr').val() === newData.val() && newData.parent().parent().parent().child('runs').child($uid).child('e').exists() && newData.parent().parent().parent().child('runs').child($uid).child('h').val() >= 5 && (!data.exists() || newData.val() > data.val())"
+        },
+        "mo": {
+          ".validate": "newData.isNumber() && newData.val() === (((5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2 - (5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2) % 153) / 153) < 10 ? (1972 + 4 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461)) / 1461) + (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) * 100 + ((5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2 - (5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2) % 153) / 153) + 3 : (1973 + 4 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461)) / 1461) + (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) * 100 + ((5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2 - (5 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - 365 * (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) >= 1095 ? 3 : (((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) - ((((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) - 790) % 1461) % 365) / 365)) + 2) % 153) / 153) - 9) && newData.parent().child('ml').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('ml').exists() || data.parent().child('ml').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val())"
+        },
+        "mm": {
+          ".validate": "newData.isNumber() && newData.val() === ((data.parent().child('mo').exists() && data.parent().child('mo').val() === newData.parent().child('mo').val()) && data.parent().child('mm').val() > newData.parent().parent().parent().child('runs').child($uid).child('h').val() ? data.parent().child('mm').val() : newData.parent().parent().parent().child('runs').child($uid).child('h').val()) && newData.parent().child('ml').val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && (!data.parent().child('ml').exists() || data.parent().child('ml').val() < newData.parent().parent().parent().child('runs').child($uid).child('s').val())"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "missions": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "g1": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('g').val() >= 1"
+        },
+        "g10": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('g').val() >= 10"
+        },
+        "g50": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('g').val() >= 50"
+        },
+        "g100": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('g').val() >= 100"
+        },
+        "g250": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('g').val() >= 250"
+        },
+        "g500": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('g').val() >= 500"
+        },
+        "g1000": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('g').val() >= 1000"
+        },
+        "b10": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('s').val() >= 10"
+        },
+        "b25": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('s').val() >= 25"
+        },
+        "b50": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('s').val() >= 50"
+        },
+        "b75": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('s').val() >= 75"
+        },
+        "b100": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('s').val() >= 100"
+        },
+        "b125": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('s').val() >= 125"
+        },
+        "b150": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('s').val() >= 150"
+        },
+        "b200": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('s').val() >= 200"
+        },
+        "b300": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('s').val() >= 300"
+        },
+        "r100": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('r').val() >= 100"
+        },
+        "r500": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('r').val() >= 500"
+        },
+        "r2000": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('r').val() >= 2000"
+        },
+        "r5000": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('r').val() >= 5000"
+        },
+        "r10000": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('r').val() >= 10000"
+        },
+        "r25000": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('r').val() >= 25000"
+        },
+        "r50000": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('stats').child($uid).child('r').val() >= 50000"
+        },
+        "s3": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('streaks').child($uid).child('n').val() >= 3"
+        },
+        "s7": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('streaks').child($uid).child('n').val() >= 7"
+        },
+        "s14": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('streaks').child($uid).child('n').val() >= 14"
+        },
+        "s21": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('streaks').child($uid).child('n').val() >= 21"
+        },
+        "s28": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('streaks').child($uid).child('n').val() >= 28"
+        },
+        "s60": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('streaks').child($uid).child('n').val() >= 60"
+        },
+        "t1": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('ms').val() >= 3600000"
+        },
+        "t10": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('ms').val() >= 36000000"
+        },
+        "t50": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('scores').child($uid).child('ms').val() >= 180000000"
+        },
+        "e1": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('wallets').child($uid).child('av').exists()"
+        },
+        "c1": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && root.child('wallets').child($uid).child('sp').val() >= 1"
+        },
+        "v1": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.val() === true",
+          ".validate": "newData.val() === true && auth.token.email_verified === true && !auth.token.email.endsWith('@tio-pato.invalid')"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "ruleta": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".validate": "newData.hasChildren(['t'])",
+        "t": {
+          ".validate": "newData.isNumber() && (newData.val() === data.val() || (newData.val() === now && (!data.exists() || ((now + (-10800000) - (now + (-10800000)) % 86400000) / 86400000) > ((data.val() + (-10800000) - (data.val() + (-10800000)) % 86400000) / 86400000))))"
+        },
+        "c": {
+          ".validate": "newData.isNumber() && newData.val() === newData.parent().child('t').val() && data.parent().child('t').exists() && data.parent().child('t').val() === newData.parent().child('t').val() && (!data.exists() || data.val() !== newData.val())"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "vip": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && (!newData.exists() || root.child('wallets').child($uid).child('own').child('ch_millonario').val() === true)",
+        ".validate": "newData.hasChildren(['w', 'n', 't', 'c'])",
+        "w": {
+          ".validate": "newData.isString() && newData.val().matches(/^\\+[1-9][0-9]{7,14}$/)"
+        },
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+        },
+        "t": {
+          ".validate": "newData.isNumber() && newData.val() === now"
+        },
+        "c": {
+          ".validate": "newData.val() === true"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "wallets": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['c', 'sp'])",
+        "c": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 1000000000000 && (newData.val() === (data.exists() ? data.val() : 0) || (newData.parent().child('lr').exists() && (!data.parent().child('lr').exists() || newData.parent().child('lr').val() > data.parent().child('lr').val()) && newData.val() - (data.exists() ? data.val() : 0) === newData.parent().parent().parent().child('runs').child($uid).child('p').val()) || (newData.parent().parent().parent().child('streaks').child($uid).child('t').val() === now && newData.val() - (data.exists() ? data.val() : 0) === (newData.parent().parent().parent().child('streaks').child($uid).child('n').val() >= 28 ? 10000 : (newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 1 ? 100 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 2 ? 200 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 3 ? 300 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 4 ? 400 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 5 ? 500 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 6 ? 1000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 8 ? 500 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 9 ? 1000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 10 ? 1500 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 11 ? 2000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 12 ? 2500 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 13 ? 3000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 15 ? 1000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 16 ? 2000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 17 ? 3000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 18 ? 4000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 19 ? 5000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 20 ? 6000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 22 ? 2000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 23 ? 3000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 24 ? 4000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 25 ? 5000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 26 ? 6000 : newData.parent().parent().parent().child('streaks').child($uid).child('n').val() === 27 ? 8000 : 0))) || (((newData.parent().parent().parent().child('missions').child($uid).child('g1').exists() && !root.child('missions').child($uid).child('g1').exists() ? 100 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g10').exists() && !root.child('missions').child($uid).child('g10').exists() ? 250 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g50').exists() && !root.child('missions').child($uid).child('g50').exists() ? 1000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g100').exists() && !root.child('missions').child($uid).child('g100').exists() ? 3000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g250').exists() && !root.child('missions').child($uid).child('g250').exists() ? 8000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g500').exists() && !root.child('missions').child($uid).child('g500').exists() ? 20000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g1000').exists() && !root.child('missions').child($uid).child('g1000').exists() ? 60000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b10').exists() && !root.child('missions').child($uid).child('b10').exists() ? 100 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b25').exists() && !root.child('missions').child($uid).child('b25').exists() ? 250 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b50').exists() && !root.child('missions').child($uid).child('b50').exists() ? 600 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b75').exists() && !root.child('missions').child($uid).child('b75').exists() ? 1500 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b100').exists() && !root.child('missions').child($uid).child('b100').exists() ? 4000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b125').exists() && !root.child('missions').child($uid).child('b125').exists() ? 10000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b150').exists() && !root.child('missions').child($uid).child('b150').exists() ? 25000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b200').exists() && !root.child('missions').child($uid).child('b200').exists() ? 100000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b300').exists() && !root.child('missions').child($uid).child('b300').exists() ? 500000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r100').exists() && !root.child('missions').child($uid).child('r100').exists() ? 150 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r500').exists() && !root.child('missions').child($uid).child('r500').exists() ? 500 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r2000').exists() && !root.child('missions').child($uid).child('r2000').exists() ? 2000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r5000').exists() && !root.child('missions').child($uid).child('r5000').exists() ? 6000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r10000').exists() && !root.child('missions').child($uid).child('r10000').exists() ? 20000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r25000').exists() && !root.child('missions').child($uid).child('r25000').exists() ? 60000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r50000').exists() && !root.child('missions').child($uid).child('r50000').exists() ? 150000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s3').exists() && !root.child('missions').child($uid).child('s3').exists() ? 300 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s7').exists() && !root.child('missions').child($uid).child('s7').exists() ? 1500 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s14').exists() && !root.child('missions').child($uid).child('s14').exists() ? 5000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s21').exists() && !root.child('missions').child($uid).child('s21').exists() ? 12000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s28').exists() && !root.child('missions').child($uid).child('s28').exists() ? 30000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s60').exists() && !root.child('missions').child($uid).child('s60').exists() ? 100000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('t1').exists() && !root.child('missions').child($uid).child('t1').exists() ? 1000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('t10').exists() && !root.child('missions').child($uid).child('t10').exists() ? 8000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('t50').exists() && !root.child('missions').child($uid).child('t50').exists() ? 40000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('e1').exists() && !root.child('missions').child($uid).child('e1').exists() ? 150 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('c1').exists() && !root.child('missions').child($uid).child('c1').exists() ? 150 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('v1').exists() && !root.child('missions').child($uid).child('v1').exists() ? 500 : 0)) + ((((newData.parent().parent().parent().child('stats').child($uid).child('dc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('dc').val() : 0) % 2 >= 1) && !((root.child('stats').child($uid).child('dc').exists() ? root.child('stats').child($uid).child('dc').val() : 0) % 2 >= 1) ? 100 : 0) + (((newData.parent().parent().parent().child('stats').child($uid).child('dc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('dc').val() : 0) % 4 >= 2) && !((root.child('stats').child($uid).child('dc').exists() ? root.child('stats').child($uid).child('dc').val() : 0) % 4 >= 2) ? 250 : 0) + (((newData.parent().parent().parent().child('stats').child($uid).child('dc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('dc').val() : 0) % 8 >= 4) && !((root.child('stats').child($uid).child('dc').exists() ? root.child('stats').child($uid).child('dc').val() : 0) % 8 >= 4) ? 500 : 0)) + ((((newData.parent().parent().parent().child('stats').child($uid).child('wc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('wc').val() : 0) % 2 >= 1) && !((root.child('stats').child($uid).child('wc').exists() ? root.child('stats').child($uid).child('wc').val() : 0) % 2 >= 1) ? 1000 : 0) + (((newData.parent().parent().parent().child('stats').child($uid).child('wc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('wc').val() : 0) % 4 >= 2) && !((root.child('stats').child($uid).child('wc').exists() ? root.child('stats').child($uid).child('wc').val() : 0) % 4 >= 2) ? 3000 : 0) + (((newData.parent().parent().parent().child('stats').child($uid).child('wc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('wc').val() : 0) % 8 >= 4) && !((root.child('stats').child($uid).child('wc').exists() ? root.child('stats').child($uid).child('wc').val() : 0) % 8 >= 4) ? 10000 : 0)) > 0 && newData.val() - (data.exists() ? data.val() : 0) === ((newData.parent().parent().parent().child('missions').child($uid).child('g1').exists() && !root.child('missions').child($uid).child('g1').exists() ? 100 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g10').exists() && !root.child('missions').child($uid).child('g10').exists() ? 250 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g50').exists() && !root.child('missions').child($uid).child('g50').exists() ? 1000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g100').exists() && !root.child('missions').child($uid).child('g100').exists() ? 3000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g250').exists() && !root.child('missions').child($uid).child('g250').exists() ? 8000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g500').exists() && !root.child('missions').child($uid).child('g500').exists() ? 20000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('g1000').exists() && !root.child('missions').child($uid).child('g1000').exists() ? 60000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b10').exists() && !root.child('missions').child($uid).child('b10').exists() ? 100 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b25').exists() && !root.child('missions').child($uid).child('b25').exists() ? 250 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b50').exists() && !root.child('missions').child($uid).child('b50').exists() ? 600 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b75').exists() && !root.child('missions').child($uid).child('b75').exists() ? 1500 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b100').exists() && !root.child('missions').child($uid).child('b100').exists() ? 4000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b125').exists() && !root.child('missions').child($uid).child('b125').exists() ? 10000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b150').exists() && !root.child('missions').child($uid).child('b150').exists() ? 25000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b200').exists() && !root.child('missions').child($uid).child('b200').exists() ? 100000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('b300').exists() && !root.child('missions').child($uid).child('b300').exists() ? 500000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r100').exists() && !root.child('missions').child($uid).child('r100').exists() ? 150 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r500').exists() && !root.child('missions').child($uid).child('r500').exists() ? 500 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r2000').exists() && !root.child('missions').child($uid).child('r2000').exists() ? 2000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r5000').exists() && !root.child('missions').child($uid).child('r5000').exists() ? 6000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r10000').exists() && !root.child('missions').child($uid).child('r10000').exists() ? 20000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r25000').exists() && !root.child('missions').child($uid).child('r25000').exists() ? 60000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('r50000').exists() && !root.child('missions').child($uid).child('r50000').exists() ? 150000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s3').exists() && !root.child('missions').child($uid).child('s3').exists() ? 300 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s7').exists() && !root.child('missions').child($uid).child('s7').exists() ? 1500 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s14').exists() && !root.child('missions').child($uid).child('s14').exists() ? 5000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s21').exists() && !root.child('missions').child($uid).child('s21').exists() ? 12000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s28').exists() && !root.child('missions').child($uid).child('s28').exists() ? 30000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('s60').exists() && !root.child('missions').child($uid).child('s60').exists() ? 100000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('t1').exists() && !root.child('missions').child($uid).child('t1').exists() ? 1000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('t10').exists() && !root.child('missions').child($uid).child('t10').exists() ? 8000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('t50').exists() && !root.child('missions').child($uid).child('t50').exists() ? 40000 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('e1').exists() && !root.child('missions').child($uid).child('e1').exists() ? 150 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('c1').exists() && !root.child('missions').child($uid).child('c1').exists() ? 150 : 0) + (newData.parent().parent().parent().child('missions').child($uid).child('v1').exists() && !root.child('missions').child($uid).child('v1').exists() ? 500 : 0)) + ((((newData.parent().parent().parent().child('stats').child($uid).child('dc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('dc').val() : 0) % 2 >= 1) && !((root.child('stats').child($uid).child('dc').exists() ? root.child('stats').child($uid).child('dc').val() : 0) % 2 >= 1) ? 100 : 0) + (((newData.parent().parent().parent().child('stats').child($uid).child('dc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('dc').val() : 0) % 4 >= 2) && !((root.child('stats').child($uid).child('dc').exists() ? root.child('stats').child($uid).child('dc').val() : 0) % 4 >= 2) ? 250 : 0) + (((newData.parent().parent().parent().child('stats').child($uid).child('dc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('dc').val() : 0) % 8 >= 4) && !((root.child('stats').child($uid).child('dc').exists() ? root.child('stats').child($uid).child('dc').val() : 0) % 8 >= 4) ? 500 : 0)) + ((((newData.parent().parent().parent().child('stats').child($uid).child('wc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('wc').val() : 0) % 2 >= 1) && !((root.child('stats').child($uid).child('wc').exists() ? root.child('stats').child($uid).child('wc').val() : 0) % 2 >= 1) ? 1000 : 0) + (((newData.parent().parent().parent().child('stats').child($uid).child('wc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('wc').val() : 0) % 4 >= 2) && !((root.child('stats').child($uid).child('wc').exists() ? root.child('stats').child($uid).child('wc').val() : 0) % 4 >= 2) ? 3000 : 0) + (((newData.parent().parent().parent().child('stats').child($uid).child('wc').exists() ? newData.parent().parent().parent().child('stats').child($uid).child('wc').val() : 0) % 8 >= 4) && !((root.child('stats').child($uid).child('wc').exists() ? root.child('stats').child($uid).child('wc').val() : 0) % 8 >= 4) ? 10000 : 0))) || ((newData.parent().parent().parent().child('ruleta').child($uid).child('c').exists() && newData.parent().parent().parent().child('ruleta').child($uid).child('c').val() === newData.parent().parent().parent().child('ruleta').child($uid).child('t').val() && root.child('ruleta').child($uid).child('t').val() === newData.parent().parent().parent().child('ruleta').child($uid).child('t').val() && (!root.child('ruleta').child($uid).child('c').exists() || root.child('ruleta').child($uid).child('c').val() !== newData.parent().parent().parent().child('ruleta').child($uid).child('t').val())) && newData.val() - (data.exists() ? data.val() : 0) === (((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 4 ? 500 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 8 ? 1000 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 11 ? 2500 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 13 ? 5000 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 14 ? 10000 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 15 ? 25000 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 17 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 19 ? 0 : ((newData.parent().parent().parent().child('ruleta').child($uid).child('t').val()) % 20) < 20 ? 0 : 0)))"
+        },
+        "sp": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && (!data.exists() || newData.val() >= data.val()) && newData.val() <= newData.parent().child('c').val()"
+        },
+        "lr": {
+          ".validate": "newData.isNumber() && newData.val() === newData.parent().parent().parent().child('runs').child($uid).child('s').val() && newData.parent().parent().parent().child('runs').child($uid).child('e').exists() && (!data.exists() || newData.val() > data.val())"
+        },
+        "av": {
+          ".validate": "newData.isString() && newData.val().matches(/^e[0-9A-Za-z_-]{4}([0-9A-Za-z_-]{4}){1,5}$/)"
+        },
+        "own": {
+          "$item": {
+            ".validate": "newData.val() === true && ($item === 'ch_teleton' ? 1000 : $item === 'ch_tia' ? 1500 : $item === 'ch_conejo' ? 3000 : $item === 'ch_conejita' ? 3000 : $item === 'ch_bigotes' ? 6000 : $item === 'ch_tios' ? 6000 : $item === 'ch_galactico' ? 50000 : $item === 'ch_millonario' ? 100000000 : $item === 'bg_atardecer' ? 2000 : $item === 'bg_cristal' ? 2200 : $item === 'bg_aurora' ? 3000 : $item === 'bg_galaxia' ? 4000 : $item === 'bg_holo' ? 4500 : $item === 'bg_synth' ? 5500 : $item === 'bg_boveda' ? 20000000 : $item === 'bg_prisma' ? 50000000 : $item === 'bg_agujero' ? 100000000 : $item === 'pad_dorada' ? 220 : $item === 'pad_fuego' ? 280 : $item === 'pad_cristal' ? 300 : $item === 'pad_neon' ? 350 : $item === 'pad_galaxia' ? 400 : $item === 'pad_arcoiris' ? 450 : $item === 'pad_holo' ? 500 : $item === 'pad_midas' ? 3000000 : $item === 'pad_diamante' ? 6000000 : $item === 'pad_plasma' ? 12000000 : $item === 'ball_peso5' ? 5 : $item === 'ball_peso10' ? 10 : $item === 'ball_peso50' ? 50 : $item === 'ball_peso100' ? 100 : $item === 'ball_peso500' ? 500 : $item === 'ball_b1000' ? 1000 : $item === 'ball_b2000' ? 2000 : $item === 'ball_b5000' ? 5000 : $item === 'ball_b10000' ? 10000 : $item === 'ball_b20000' ? 20000 : $item === 'ball_plata' ? 50000 : $item === 'ball_oro' ? 500000 : $item === 'ball_diamante' ? 1000000 : $item === 'th_clasico' ? 1000 : $item === 'th_bosque' ? 2000 : $item === 'th_rosa' ? 2000 : $item === 'th_violeta' ? 3000 : $item === 'th_fuego' ? 3500 : $item === 'th_noche' ? 4000 : $item === 'th_oro' ? 10000000 : $item === 'th_diamante' ? 25000000 : $item === 'sfx_cuac' ? 800 : $item === 'sfx_bip' ? 800 : $item === 'sfx_cash' ? 1200 : $item === 'sfx_kling' ? 1200 : $item === 'sfx_gota' ? 1500 : $item === 'sfx_laser' ? 2000 : -1) > 0 && (data.exists() || ((newData.parent().parent().child('sp').val() - (root.child('wallets').child($uid).child('sp').exists() ? root.child('wallets').child($uid).child('sp').val() : 0)) >= ((newData.parent().parent().child('own').child('ch_teleton').exists() && !root.child('wallets').child($uid).child('own').child('ch_teleton').exists() ? 1000 : 0) + (newData.parent().parent().child('own').child('ch_tia').exists() && !root.child('wallets').child($uid).child('own').child('ch_tia').exists() ? 1500 : 0) + (newData.parent().parent().child('own').child('ch_conejo').exists() && !root.child('wallets').child($uid).child('own').child('ch_conejo').exists() ? 3000 : 0) + (newData.parent().parent().child('own').child('ch_conejita').exists() && !root.child('wallets').child($uid).child('own').child('ch_conejita').exists() ? 3000 : 0) + (newData.parent().parent().child('own').child('ch_bigotes').exists() && !root.child('wallets').child($uid).child('own').child('ch_bigotes').exists() ? 6000 : 0) + (newData.parent().parent().child('own').child('ch_tios').exists() && !root.child('wallets').child($uid).child('own').child('ch_tios').exists() ? 6000 : 0) + (newData.parent().parent().child('own').child('ch_galactico').exists() && !root.child('wallets').child($uid).child('own').child('ch_galactico').exists() ? 50000 : 0) + (newData.parent().parent().child('own').child('ch_millonario').exists() && !root.child('wallets').child($uid).child('own').child('ch_millonario').exists() ? 100000000 : 0) + (newData.parent().parent().child('own').child('bg_atardecer').exists() && !root.child('wallets').child($uid).child('own').child('bg_atardecer').exists() ? 2000 : 0) + (newData.parent().parent().child('own').child('bg_cristal').exists() && !root.child('wallets').child($uid).child('own').child('bg_cristal').exists() ? 2200 : 0) + (newData.parent().parent().child('own').child('bg_aurora').exists() && !root.child('wallets').child($uid).child('own').child('bg_aurora').exists() ? 3000 : 0) + (newData.parent().parent().child('own').child('bg_galaxia').exists() && !root.child('wallets').child($uid).child('own').child('bg_galaxia').exists() ? 4000 : 0) + (newData.parent().parent().child('own').child('bg_holo').exists() && !root.child('wallets').child($uid).child('own').child('bg_holo').exists() ? 4500 : 0) + (newData.parent().parent().child('own').child('bg_synth').exists() && !root.child('wallets').child($uid).child('own').child('bg_synth').exists() ? 5500 : 0) + (newData.parent().parent().child('own').child('bg_boveda').exists() && !root.child('wallets').child($uid).child('own').child('bg_boveda').exists() ? 20000000 : 0) + (newData.parent().parent().child('own').child('bg_prisma').exists() && !root.child('wallets').child($uid).child('own').child('bg_prisma').exists() ? 50000000 : 0) + (newData.parent().parent().child('own').child('bg_agujero').exists() && !root.child('wallets').child($uid).child('own').child('bg_agujero').exists() ? 100000000 : 0) + (newData.parent().parent().child('own').child('pad_dorada').exists() && !root.child('wallets').child($uid).child('own').child('pad_dorada').exists() ? 220 : 0) + (newData.parent().parent().child('own').child('pad_fuego').exists() && !root.child('wallets').child($uid).child('own').child('pad_fuego').exists() ? 280 : 0) + (newData.parent().parent().child('own').child('pad_cristal').exists() && !root.child('wallets').child($uid).child('own').child('pad_cristal').exists() ? 300 : 0) + (newData.parent().parent().child('own').child('pad_neon').exists() && !root.child('wallets').child($uid).child('own').child('pad_neon').exists() ? 350 : 0) + (newData.parent().parent().child('own').child('pad_galaxia').exists() && !root.child('wallets').child($uid).child('own').child('pad_galaxia').exists() ? 400 : 0) + (newData.parent().parent().child('own').child('pad_arcoiris').exists() && !root.child('wallets').child($uid).child('own').child('pad_arcoiris').exists() ? 450 : 0) + (newData.parent().parent().child('own').child('pad_holo').exists() && !root.child('wallets').child($uid).child('own').child('pad_holo').exists() ? 500 : 0) + (newData.parent().parent().child('own').child('pad_midas').exists() && !root.child('wallets').child($uid).child('own').child('pad_midas').exists() ? 3000000 : 0) + (newData.parent().parent().child('own').child('pad_diamante').exists() && !root.child('wallets').child($uid).child('own').child('pad_diamante').exists() ? 6000000 : 0) + (newData.parent().parent().child('own').child('pad_plasma').exists() && !root.child('wallets').child($uid).child('own').child('pad_plasma').exists() ? 12000000 : 0) + (newData.parent().parent().child('own').child('ball_peso5').exists() && !root.child('wallets').child($uid).child('own').child('ball_peso5').exists() ? 5 : 0) + (newData.parent().parent().child('own').child('ball_peso10').exists() && !root.child('wallets').child($uid).child('own').child('ball_peso10').exists() ? 10 : 0) + (newData.parent().parent().child('own').child('ball_peso50').exists() && !root.child('wallets').child($uid).child('own').child('ball_peso50').exists() ? 50 : 0) + (newData.parent().parent().child('own').child('ball_peso100').exists() && !root.child('wallets').child($uid).child('own').child('ball_peso100').exists() ? 100 : 0) + (newData.parent().parent().child('own').child('ball_peso500').exists() && !root.child('wallets').child($uid).child('own').child('ball_peso500').exists() ? 500 : 0) + (newData.parent().parent().child('own').child('ball_b1000').exists() && !root.child('wallets').child($uid).child('own').child('ball_b1000').exists() ? 1000 : 0) + (newData.parent().parent().child('own').child('ball_b2000').exists() && !root.child('wallets').child($uid).child('own').child('ball_b2000').exists() ? 2000 : 0) + (newData.parent().parent().child('own').child('ball_b5000').exists() && !root.child('wallets').child($uid).child('own').child('ball_b5000').exists() ? 5000 : 0) + (newData.parent().parent().child('own').child('ball_b10000').exists() && !root.child('wallets').child($uid).child('own').child('ball_b10000').exists() ? 10000 : 0) + (newData.parent().parent().child('own').child('ball_b20000').exists() && !root.child('wallets').child($uid).child('own').child('ball_b20000').exists() ? 20000 : 0) + (newData.parent().parent().child('own').child('ball_plata').exists() && !root.child('wallets').child($uid).child('own').child('ball_plata').exists() ? 50000 : 0) + (newData.parent().parent().child('own').child('ball_oro').exists() && !root.child('wallets').child($uid).child('own').child('ball_oro').exists() ? 500000 : 0) + (newData.parent().parent().child('own').child('ball_diamante').exists() && !root.child('wallets').child($uid).child('own').child('ball_diamante').exists() ? 1000000 : 0) + (newData.parent().parent().child('own').child('th_clasico').exists() && !root.child('wallets').child($uid).child('own').child('th_clasico').exists() ? 1000 : 0) + (newData.parent().parent().child('own').child('th_bosque').exists() && !root.child('wallets').child($uid).child('own').child('th_bosque').exists() ? 2000 : 0) + (newData.parent().parent().child('own').child('th_rosa').exists() && !root.child('wallets').child($uid).child('own').child('th_rosa').exists() ? 2000 : 0) + (newData.parent().parent().child('own').child('th_violeta').exists() && !root.child('wallets').child($uid).child('own').child('th_violeta').exists() ? 3000 : 0) + (newData.parent().parent().child('own').child('th_fuego').exists() && !root.child('wallets').child($uid).child('own').child('th_fuego').exists() ? 3500 : 0) + (newData.parent().parent().child('own').child('th_noche').exists() && !root.child('wallets').child($uid).child('own').child('th_noche').exists() ? 4000 : 0) + (newData.parent().parent().child('own').child('th_oro').exists() && !root.child('wallets').child($uid).child('own').child('th_oro').exists() ? 10000000 : 0) + (newData.parent().parent().child('own').child('th_diamante').exists() && !root.child('wallets').child($uid).child('own').child('th_diamante').exists() ? 25000000 : 0) + (newData.parent().parent().child('own').child('sfx_cuac').exists() && !root.child('wallets').child($uid).child('own').child('sfx_cuac').exists() ? 800 : 0) + (newData.parent().parent().child('own').child('sfx_bip').exists() && !root.child('wallets').child($uid).child('own').child('sfx_bip').exists() ? 800 : 0) + (newData.parent().parent().child('own').child('sfx_cash').exists() && !root.child('wallets').child($uid).child('own').child('sfx_cash').exists() ? 1200 : 0) + (newData.parent().parent().child('own').child('sfx_kling').exists() && !root.child('wallets').child($uid).child('own').child('sfx_kling').exists() ? 1200 : 0) + (newData.parent().parent().child('own').child('sfx_gota').exists() && !root.child('wallets').child($uid).child('own').child('sfx_gota').exists() ? 1500 : 0) + (newData.parent().parent().child('own').child('sfx_laser').exists() && !root.child('wallets').child($uid).child('own').child('sfx_laser').exists() ? 2000 : 0)) && ($item === 'ch_teleton' ? now < 1794711600000 : true)))"
+          }
+        },
+        "eq": {
+          "ch": {
+            ".validate": "newData.isString() && (newData.val() === 'tio' || newData.parent().parent().child('own').child('ch_' + newData.val()).val() === true)"
+          },
+          "bg": {
+            ".validate": "newData.isString() && (newData.val() === 'clasico' || newData.parent().parent().child('own').child('bg_' + newData.val()).val() === true)"
+          },
+          "pad": {
+            ".validate": "newData.isString() && (newData.val() === 'clasica' || newData.parent().parent().child('own').child('pad_' + newData.val()).val() === true)"
+          },
+          "ball": {
+            ".validate": "newData.isString() && (newData.val() === 'peso1' || newData.parent().parent().child('own').child('ball_' + newData.val()).val() === true)"
+          },
+          "th": {
+            ".validate": "newData.isString() && (newData.val() === 'oceano' || newData.parent().parent().child('own').child('th_' + newData.val()).val() === true)"
+          },
+          "sfx": {
+            ".validate": "newData.isString() && (newData.val() === 'clasico' || newData.parent().parent().child('own').child('sfx_' + newData.val()).val() === true)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "arcade": {
+      ".read": true,
+      ".indexOn": [
+        "s"
+      ],
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && (!data.exists() || newData.child('s').val() >= data.child('s').val())",
+        ".validate": "newData.hasChildren(['n', 's', 't'])",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+        },
+        "s": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 500 && newData.parent().parent().parent().child('runs').child($uid).child('e').exists() && newData.val() <= newData.parent().parent().parent().child('runs').child($uid).child('h').val()"
+        },
+        "t": {
+          ".validate": "newData.val() === now"
+        },
+        "a": {
+          ".validate": "newData.isString() && newData.val().matches(/^e[0-9A-Za-z_-]{4}([0-9A-Za-z_-]{4}){1,5}$/)"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "v2": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "pu": {
+          "slow": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && (newData.val() < (data.exists() ? data.val() : 0) || (newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().parent().parent().parent().child('wallets').child($uid).child('sp').val() - root.child('wallets').child($uid).child('sp').val() === 500000))"
+          },
+          "freeze": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && (newData.val() < (data.exists() ? data.val() : 0) || (newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().parent().parent().parent().child('wallets').child($uid).child('sp').val() - root.child('wallets').child($uid).child('sp').val() === 500000))"
+          },
+          "wide": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && (newData.val() < (data.exists() ? data.val() : 0) || (newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().parent().parent().parent().child('wallets').child($uid).child('sp').val() - root.child('wallets').child($uid).child('sp').val() === 500000))"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "na": {
+          ".validate": false
+        },
+        "nc": {
+          ".validate": "newData.val() === now && (!data.exists() || now - data.val() >= 30 * 86400000)"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

@@ -3,11 +3,11 @@
 // Así Firebase valida lo mismo que el juego: precios, recompensas y el tiempo real que dura una partida.
 // Cada campo lleva sus propias comprobaciones (no se confía en reglas del nodo padre), para que no se puedan saltar escribiendo una sola ruta.
 const fs = require('fs'), path = require('path'), vm = require('vm');
-const dir = path.join(__dirname, '..');
+const dir = process.argv[2] ? path.resolve(process.argv[2]) : path.join(__dirname, '..');          // V2: `node herramientas/generar-reglas.js v2/juego` genera las reglas de la V2
 const ctx = { window: {} }; vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(dir, 'tienda.js'), 'utf8'), ctx);
 const T = ctx.window.TIENDA, ECO = T.eco, E = ECO.tier;
-const CATS = ['ch', 'bg', 'pad', 'ball', 'th'];                  // th = colores del juego
+const CATS = ['ch', 'bg', 'pad', 'ball', 'th', ...(T.sfx ? ['sfx'] : [])];      // th = colores del juego · sfx = sonidos de rebote (V2)
 const MAIL = '@tio-pato.invalid';
 const SECRET = T.ch.find(c => c.secret).id;       // el personaje secreto (sus compras se guardan como own/ch_<id>)
 // pesos por punto de cada pelota (ball[].rate): se escribe como una cadena de «?:» sobre el id de la pelota que quedó anotada al empezar la partida
@@ -362,5 +362,31 @@ const rules = { rules: {
     $other: { '.validate': false }
   } }
 } };
+// ---- V2 (solo si el catálogo trae `v2`): marcador Arcade y lo de la V2 de cada cuenta ----
+if (T.v2) {
+  const V2 = T.v2, PU = Object.keys(V2.powerups);
+  // marcador Arcade: arcade/<uid> = tu mejor partida con power-ups. Igual que `scores`: solo sube y no puede pasar de tu partida terminada.
+  rules.rules.arcade = { '.read': true, '.indexOn': ['s'], $uid: {
+    '.write': "auth != null && auth.uid === $uid && (!data.exists() || newData.child('s').val() >= data.child('s').val())",
+    '.validate': "newData.hasChildren(['n', 's', 't'])",
+    n: { '.validate': 'newData.isString() && newData.val().length >= 1 && newData.val().length <= 16' },
+    s: { '.validate': `newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= ${ECO.hMax} && ${RUN}.child('e').exists() && newData.val() <= ${RUN}.child('h').val()` },
+    t: { '.validate': 'newData.val() === now' },
+    a: { '.validate': AVATAR },
+    $other: { '.validate': false }
+  } };
+  // v2/<uid>: power-ups guardados (pu), «Sin anuncios» (na) y cuándo cambió el nombre (nc). Solo su dueño lo lee.
+  //   pu: el jugador solo puede gastar (bajar) o comprar UNO con pesos, pagando exactamente su precio en la misma escritura.
+  //       Los packs con dinero real los entrega el servidor (con permisos de administrador, después de validar el recibo).
+  //   na: solo el servidor (la compra «Sin anuncios» se valida con la tienda).
+  const NEW_SP = "newData.parent().parent().parent().parent().child('wallets').child($uid).child('sp').val()", OLD_SP = "root.child('wallets').child($uid).child('sp').val()";
+  const pu = {}; for (const k of PU) pu[k] = { '.validate': `newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && (newData.val() < (data.exists() ? data.val() : 0) || (newData.val() === (data.exists() ? data.val() : 0) + 1 && ${NEW_SP} - ${OLD_SP} === ${V2.precioPesos}))` };
+  pu.$other = { '.validate': false };
+  rules.rules.v2 = { $uid: {
+    '.read': 'auth != null && auth.uid === $uid', '.write': 'auth != null && auth.uid === $uid',
+    pu, na: { '.validate': false }, nc: { '.validate': 'newData.val() === now && (!data.exists() || now - data.val() >= 30 * 86400000)' },
+    $other: { '.validate': false }
+  } };
+}
 fs.writeFileSync(path.join(dir, 'firebase-rules.json'), JSON.stringify(rules, null, 2) + '\n');
 console.log('firebase-rules.json generado:', ITEMS.length, 'artículos de pago');

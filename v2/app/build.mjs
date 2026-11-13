@@ -4,9 +4,9 @@ import { build } from 'esbuild';
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const here = new URL('.', import.meta.url), repo = new URL('../../', here);
-const { outputFiles: [bundle] } = await build({ entryPoints: [new URL('web/demo.js', here).pathname], bundle: true, format: 'iife', minify: true, target: 'es2022', write: false });
+const { outputFiles: [bundle] } = await build({ entryPoints: [new URL('web-mvc-borrador/demo.js', here).pathname], bundle: true, format: 'iife', minify: true, target: 'es2022', write: false });
 const css = readFileSync(new URL('src/styles.css', here), 'utf8');
-const page = readFileSync(new URL('web/index.html', here), 'utf8').replace('/*CSS*/', () => css).replace('/*JS*/', () => bundle.text.replace(/<\/script/g, '<\\/script'));
+const page = readFileSync(new URL('web-mvc-borrador/index.html', here), 'utf8').replace('/*CSS*/', () => css).replace('/*JS*/', () => bundle.text.replace(/<\/script/g, '<\\/script'));
 
 mkdirSync(new URL('dist/', here), { recursive: true });
 // `fragment.html` es la página sin envoltorio (la que se publica como artefacto); `index.html` la envuelve para abrirla sola.

@@ -1,0 +1,42 @@
+{
+  "id": "./",
+  "name": "Gánale al Tío Pato",
+  "short_name": "Tío Pato",
+  "description": "¡Rebota, gana y hazte millonario! Rebota la moneda contra el Tío Pato: empieza como un ángel amistoso y termina convertido en diablo.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "./?source=app",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait",
+  "background_color": "#004e6a",
+  "theme_color": "#00223b",
+  "categories": [
+    "games",
+    "entertainment"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
