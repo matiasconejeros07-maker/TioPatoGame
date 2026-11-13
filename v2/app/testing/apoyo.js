@@ -12,6 +12,7 @@ export function fakes({ consentAnswered = true, owned = { powerups: {}, entitlem
   };
   const services = {
     platform: 'android',
+    requestFrame: () => {},                // en las pruebas el tiempo de la partida se avanza a mano (MatchController.advance)
     // canRequestAds es true cuando el jugador ya respondió el formulario, haya aceptado o rechazado
     consent: { async gather() { log.push('consent'); return { canRequestAds: state.consentAnswered, privacyOptionsRequired: true }; }, async showPrivacyOptions() {} },
     ads: {

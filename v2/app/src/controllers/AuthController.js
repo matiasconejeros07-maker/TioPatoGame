@@ -91,5 +91,12 @@ export class AuthController {
     }
   }
 
+  /** Ajustes → «Eliminar cuenta»: borra la cuenta en el servidor y cierra la sesión. @returns {Promise<boolean>} */
+  async deleteAccount() {
+    try { await this.api.request('DELETE', '/account'); } catch { return false; }
+    await this.signOut();
+    return true;
+  }
+
   async signOut() { await this.sessionStore.clear().catch(() => {}); this.session.current = null; }
 }

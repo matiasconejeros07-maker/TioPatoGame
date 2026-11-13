@@ -17,9 +17,9 @@ export class GameFlowController {
   /**
    * @param {{ flow: import('../models/GameFlowModel.js').GameFlowModel, ads: import('./AdsController.js').AdsController,
    *           purchases: { sync(): Promise<unknown>, recoverPending(): Promise<unknown> },
-   *           powerUps: { beginMatch(mode: string): Promise<unknown> } }} deps
+   *           powerUps: { beginMatch(mode: string): Promise<unknown> }, match?: { begin(mode: string): void } }} deps
    */
-  constructor({ flow, ads, purchases, powerUps }) { this.flow = flow; this.ads = ads; this.purchases = purchases; this.powerUps = powerUps; }
+  constructor({ flow, ads, purchases, powerUps, match }) { this.flow = flow; this.ads = ads; this.purchases = purchases; this.powerUps = powerUps; this.match = match; }
 
   canGo(next) { return TRANSITIONS[this.flow.state].includes(next); }
 
@@ -42,6 +42,7 @@ export class GameFlowController {
     this.#go(GameState.PLAYING);
     this.flow.mode = mode;
     this.powerUps.beginMatch(mode);
+    this.match?.begin(mode);
     this.ads.preload();
   }
 

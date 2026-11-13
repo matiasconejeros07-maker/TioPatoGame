@@ -29,7 +29,8 @@ v2/
 │   │   │   ├── AdsController.js      interstitials: uno cada 5 partidas
 │   │   │   ├── ConsentController.js  consentimiento GDPR/CCPA
 │   │   │   └── ProfileController.js  cambiar nombre (30 días, filtro de groserías) y cuadro VIP
-│   │   ├── views/                VISTA (paso 4)
+│   │   ├── views/                VISTA: AppView, MenuView, MatchView, GameOverView, ShopView, PanelsView, CelebrationView
+│   │   ├── styles.css
 │   │   ├── services/
 │   │   │   ├── ports.js              contratos: qué necesita el juego de la plataforma
 │   │   │   ├── ApiClient.js          cliente de la API; firma HMAC cada petición
@@ -37,6 +38,7 @@ v2/
 │   │   │                             AdMob, NativeStore, FirebaseLegacyAuth
 │   │   ├── core/Emitter.js       avisos de los modelos
 │   │   └── composition.js        conecta las piezas: createGame() (app) y createPracticeGame() (web)
+│   ├── web/                      entrada de la demo jugable · build.mjs la empaqueta en dist/
 │   └── test/
 ├── server/                       La API (Cloudflare Worker)
 │   ├── src/
@@ -101,7 +103,8 @@ Todo está en **`shared/ids.js`**: `APP_ID` (`com.miempresa.pingpong`), los prod
 |---|---|---|
 | 1 | Estructura, base de datos, migración de Firebase, compras, «Sin anuncios», anuncios, consentimiento, cambiar nombre, eliminar cuenta, firma HMAC | hecho y probado |
 | 2 | SSO (Apple, Play Games), atestación (App Attest, Play Integrity), Device Binding con cambio cada 30 días, WAF, reembolsos, uso de power-ups, compra con pesos, filtro de groserías, marcadores por modo, Modo Práctica | hecho y probado con dobles; falta probar en teléfonos reales |
-| 3 | Partidas y economía en el servidor (cobro, tienda con pesos, racha, ruleta, misiones) y marcadores en Redis | pendiente |
-| 4 | Pasar el juego de `index.html` a controladores y vistas; interfaz premium, tienda y marcadores nuevos, puntos rojos. **Animaciones:** del Pato en la partida, de compra de cada personaje y de las monedas, revelado premium del personaje secreto y cuadro VIP | pendiente |
-| 5 | Sección Power-Ups de la tienda (packs animados) y botón de activación en la partida | pendiente |
-| 6 | Audio: música de fondo y sonidos de rebote equipables | pendiente |
+| 3 | Partidas y economía en el servidor (cobro, tienda con pesos, racha, logros, objetivos) y marcadores en Redis | **falta en el servidor**; la demo lo simula en el navegador (`DemoApi`) |
+| 4 | Partida, vistas, interfaz premium, tienda y marcadores nuevos, puntos rojos y animaciones | hecho en la demo (doc 05); faltan partes de la V1 listadas ahí |
+| 5 | Sección Power-Ups de la tienda (packs animados) y botón de activación en la partida | hecho en la demo |
+| 6 | Audio: música de fondo y sonidos de rebote equipables | hecho en la demo |
+| 7 | App nativa: proyectos de Capacitor, adaptadores reales y pruebas en teléfonos | pendiente |

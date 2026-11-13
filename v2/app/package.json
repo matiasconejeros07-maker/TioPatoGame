@@ -16,5 +16,8 @@
     "@capgo/native-purchases": "^8.9.11",
     "@modbender/capacitor-play-games": "^0.5.0",
     "capacitor-app-attest": "^7.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

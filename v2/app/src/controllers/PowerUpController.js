@@ -25,6 +25,9 @@ export class PowerUpController {
     return this.#matchId.then(() => match);
   }
 
+  /** Id de la partida en el servidor (null si no se pudo crear: sin conexión). */
+  get serverMatchId() { return this.#matchId ?? Promise.resolve(null); }
+
   get remainingThisMatch() { return this.match ? this.rules.maxPerMatch - this.match.used.length : 0; }
   isActive(id, now) { this.tick(now); return this.match ? id in this.match.active : false; }
   remainingMs(id, now) { return this.isActive(id, now) ? this.match.active[id] - now : 0; }

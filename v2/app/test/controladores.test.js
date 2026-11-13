@@ -169,10 +169,10 @@ test('cambiar nombre: avisa sin gastar peticiones (también las groserías) y re
 });
 
 test('versión web: Modo Práctica. Se juega, pero sin cuenta, tienda, anuncios ni contacto con el servidor', async () => {
-  const game = createPracticeGame();
+  const game = createPracticeGame({ requestFrame: () => {} });
   assert.equal(game.models.session.practice, true);
   assert.equal(game.models.session.current, null);
-  assert.deepEqual(Object.keys(game.controllers), ['flow'], 'no existen los controladores de cuenta, compras ni marcadores');
+  assert.deepEqual(Object.keys(game.controllers), ['flow', 'match', 'audio'], 'no existen los controladores de cuenta, compras ni marcadores');
   await game.controllers.flow.boot();
   for (let i = 0; i < 6; i++) { game.controllers.flow.startMatch(); game.controllers.flow.endMatch(); await game.controllers.flow.leaveGameOver(); }
   assert.equal(game.models.flow.state, GameState.MENU);
