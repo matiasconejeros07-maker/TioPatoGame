@@ -146,6 +146,32 @@
   // atajos de la demo (Ajustes → «Pesos de prueba»)
   window.__demo = {
     reset() { localStorage.removeItem(KEY); location.reload(); },
+    hasUser: (mail) => !!st.users[mail],
     addCoins(uid, amount) { const w = get(['wallets', uid]) || { c: 0, sp: 0 }; set(['wallets', uid, 'c'], (w.c || 0) + amount); save(); },
   };
+})();
+
+// ── botón «Entrar como demo» (solo en la demo): crea o abre una cuenta de prueba sin escribir nada ──
+(function () {
+  const DEMO = { mail: 'demo@tiopato.demo', name: 'PatoDemo', pass: 'demo12345' };
+  function poner() {
+    const go = document.getElementById('authGo'); if (!go || document.getElementById('demoGo')) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.id = 'demoGo'; b.className = 'btn demo-go'; b.textContent = '🎮 Entrar como demo';
+    const nota = document.createElement('p'); nota.className = 'demo-nota';
+    nota.textContent = 'Esta demo no usa tu cuenta real: todo se guarda solo en este teléfono.';
+    go.before(b, nota);
+    b.addEventListener('click', () => {
+      const existe = window.__demo.hasUser(DEMO.mail);
+      document.getElementById(existe ? 'tabIn' : 'tabUp').click();
+      const set = (id, v) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); };
+      if (existe) { set('acct', DEMO.mail); } else { set('acctMail', DEMO.mail); set('acct', DEMO.name); }
+      set('pass', DEMO.pass);
+      document.getElementById('authGo').click();
+    });
+    const css = document.createElement('style');
+    css.textContent = '.btn.demo-go{width:100%;margin:0 0 4px;background:linear-gradient(180deg,#fff6c2,#ffd95a 40%,#f2b01e);color:#3a2600;box-shadow:inset 0 1px 0 #fffbe0,0 4px 0 #8a5a08;font-weight:900}.demo-nota{margin:0 0 10px;font-size:12px;font-weight:700;color:var(--muted,#666);text-align:center}body.th-dark .demo-nota{color:rgba(255,255,255,.75)}';
+    document.head.appendChild(css);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', poner); else poner();
 })();
