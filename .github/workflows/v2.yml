@@ -29,6 +29,12 @@ jobs:
       - name: App, servidor y migración (modelos, controladores, API contra PostgreSQL)
         working-directory: v2
         run: npm test
+      - name: El juego completo en modo API (navegador real contra la API y PostgreSQL)
+        working-directory: v2/server
+        run: |
+          npm i --no-save --no-audit --no-fund playwright@1.48.2
+          npx playwright install --with-deps chromium
+          node testing/juego-nube.e2e.mjs
       - name: El catálogo del servidor (shared/tienda-datos.js) está al día con juego/tienda.js
         working-directory: v2
         run: node shared/generar-tienda.mjs --check

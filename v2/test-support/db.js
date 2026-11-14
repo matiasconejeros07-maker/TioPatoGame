@@ -16,7 +16,7 @@ export async function createTestDatabase() {
   const sql = postgres(url.href, { max: 4, onnotice: () => {} });
   for (const file of readdirSync(MIGRATIONS).sort()) await sql.unsafe(readFileSync(new URL(file, MIGRATIONS), 'utf8'));
   return {
-    sql,
+    sql, url: url.href,
     async drop() { await sql.end(); await admin.unsafe(`DROP DATABASE ${name}`); await admin.end(); },
   };
 }

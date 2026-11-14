@@ -32,13 +32,23 @@ hecho todavía es correrlo con tu exportación real: ese es el primer ensayo del
 | Migración desde Firebase | ✅ hecha y probada con ejemplo · ⏳ falta ensayo con tus datos reales |
 | Servidor: inicio de sesión con Play Games/Apple, 1 dispositivo por cuenta, firma de peticiones, compras con verificación, reembolsos, power-ups, cambiar nombre, eliminar cuenta, reclamar cuenta antigua | ✅ hecho y probado |
 | Servidor: terminar partida y guardar puntaje (con antitrampas), billetera, tienda con pesos, equipar, racha, ruleta, misiones/logros, marcadores, emblema/perfil | ✅ hecho y probado (`GameRepository`, `shared/economia.js`, 21 pruebas nuevas) |
-| Juego V2 hablando con el servidor nuevo (hoy habla con Firebase) | ❌ **falta** |
+| Juego V2 hablando con el servidor nuevo | ✅ hecho y probado: `juego/v2/nube.js` traduce cada lectura y escritura del juego a la API (el juego casi no cambia). Prueba de punta a punta con navegador real contra la API y PostgreSQL: 25 de 25 (`server/testing/juego-nube.e2e.mjs`) |
 | App Android (Capacitor) con Play Games, Google Play Billing, AdMob y Play Integrity | ❌ **falta** (diseñada en los documentos 03 y 04) |
 | Cuentas en los servicios (Play Console, Cloudflare, base de datos, Redis, dominio, AdMob) | ❌ falta: las creas tú |
 
 Las filas con ❌ de desarrollo las puedo hacer yo aquí, en la nube, con pruebas automáticas en cada paso. No necesitan tu PC.
 
 ---
+
+### Cómo se conectó el juego (para quien mantenga el código)
+
+- **Modo API** (en la app): la app define `window.V2_NUBE = { base, sesion }` antes de cargar el juego. `juego/v2/nube.js` intercepta lo
+  que el juego le pedía a Firebase y lo responde con la API: las lecturas salen de `GET /v2/state` y de los marcadores públicos, y
+  cada escritura se traduce a su acción (`POST /v2/matches/:id/finish`, `/streak/claim`, `/wheel/spin`, `/missions/claim`, `/shop/buy`…).
+  El servidor calcula los pesos: lo que el juego «escribía» solo dice qué quiso hacer.
+- **Modo Firebase** (web, demo y las pruebas de la V1): igual que siempre. Las 155 pruebas del juego siguen pasando.
+- La CSP de la página de la app debe incluir el dominio de la API en `connect-src` (lo hace la compilación de la app).
+- `juego/sw.js`: la caché sin conexión de la V2 (con `v2.js`, `v2.css` y `fondos-worker.js`).
 
 ## 3. Recomendación: lanzar directo sobre la base nueva
 

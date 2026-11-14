@@ -57,9 +57,10 @@ export class GameRepository {
     const [w] = await sql`SELECT earned, spent FROM wallets WHERE user_id = ${userId}`;
     const own = await sql`SELECT item_id FROM inventory WHERE user_id = ${userId}`;
     const eq = await sql`SELECT slot, item_id FROM equipped WHERE user_id = ${userId}`;
+    const [lr] = await sql`SELECT ${msOf(sql, 'started_at')} AS s FROM matches WHERE user_id = ${userId} AND hits IS NOT NULL ORDER BY started_at DESC LIMIT 1`;
     const equipped = Object.fromEntries(E.CATEGORIAS.map((c) => [c, E.defaultItem(c)]));
     for (const e of eq) if (E.CATEGORIAS.includes(e.slot)) equipped[e.slot] = e.item_id;
-    return { c: num(w?.earned) ?? 0, sp: num(w?.spent) ?? 0, own: Object.fromEntries(own.map((i) => [i.item_id, true])), eq: equipped };
+    return { c: num(w?.earned) ?? 0, sp: num(w?.spent) ?? 0, lr: num(lr?.s) ?? 0, own: Object.fromEntries(own.map((i) => [i.item_id, true])), eq: equipped };
   }
   async #streak(sql, userId) {
     const [k] = await sql`
@@ -140,8 +141,8 @@ export class GameRepository {
       const inc = E.playedIncrement(playedMs, elapsed, hits);
       await tx`UPDATE users SET played_ms = played_ms + ${inc} WHERE id = ${userId}`;
 
-      // misiones y marcadores de la semana y del mes: solo partidas de verdad (desde minRebotes)
-      if (hits >= E.MIN_REBOTES) {
+      // misiones y marcadores de la semana y del mes: solo partidas clásicas de verdad (desde minRebotes)
+      if (hits >= E.MIN_REBOTES && m.mode === MatchMode.CLASSIC) {           // las de Arcade solo suman pesos, récord arcade y tiempo
         const old = await this.#stats(tx, userId);
         const st = E.statsAfterMatch(old, hits, start, now), { g, r, ...periods } = st;
         await tx`
@@ -155,6 +156,28 @@ export class GameRepository {
       return { already: false, ...(await this.#afterMatch(tx, userId, m.mode)), pesos, mult: m.mult, hits, record, playedInc: inc };
     });
   }
+  /**
+   * Lo que el juego midió que duró la partida llega después del cobro (como en la V1). Corrige el tiempo jugado de esa
+   * partida UNA vez, con los mismos topes: nunca más de lo que duró en el servidor ni del tope por rebotes.
+   */
+  setPlayed(userId, matchId, playedMs) {
+    return this.sql.begin(async (tx) => {
+      const [m] = await tx`
+        SELECT hits, played_ms, played_fixed, (extract(epoch from ended_at - started_at) * 1000)::bigint AS dur
+        FROM matches WHERE id = ${matchId} AND user_id = ${userId} FOR UPDATE`;
+      if (!m) throw new HttpError(404, 'partida_no_encontrada');
+      if (m.hits === null) throw new HttpError(409, 'partida_sin_cobrar');
+      if (!m.played_fixed) {
+        const inc = E.playedIncrement(Number(playedMs) || 0, num(m.dur), m.hits);
+        await tx`UPDATE users SET played_ms = GREATEST(0, played_ms + ${inc - m.played_ms}) WHERE id = ${userId}`;
+        await tx`UPDATE matches SET played_ms = ${inc}, played_fixed = true WHERE id = ${matchId}`;
+      }
+      const [u] = await tx`SELECT played_ms FROM users WHERE id = ${userId}`;
+      const [mm] = await tx`SELECT played_ms FROM matches WHERE id = ${matchId}`;
+      return { playedMs: num(u.played_ms), inc: mm.played_ms };
+    });
+  }
+
   async #afterMatch(tx, userId, mode) {
     const [s] = await tx`SELECT best FROM scores WHERE user_id = ${userId} AND mode = ${mode}`;
     const [u] = await tx`SELECT played_ms FROM users WHERE id = ${userId}`;
@@ -349,6 +372,14 @@ export class GameRepository {
       SELECT ${cols}, u.played_ms AS s FROM users u WHERE u.played_ms > 0 ORDER BY u.played_ms DESC LIMIT ${lim}`;
     else throw new HttpError(422, 'marcador_invalido');
     return rows.map((x) => ({ uid: x.uid, n: x.n, s: num(x.s), ...(x.a ? { a: x.a } : {}), ...(x.r ? { r: x.r } : {}), ...(x.m ? { m: true } : {}) }));
+  }
+
+  /** Cuántas cuentas hay en cada récord clásico (0 a hMax): el `hist` de la V1, con el que el juego calcula tu puesto. */
+  async histogram() {
+    const rows = await this.sql`SELECT best, count(*) AS n FROM scores WHERE mode = 'classic' AND best > 0 GROUP BY best`;
+    const c = new Array(E.ECO.hMax + 1).fill(0);
+    for (const r of rows) c[r.best] = num(r.n);
+    return c;
   }
 
   /** Tu puesto en un marcador: cuántos te ganan + 1 (y tu puntaje). */

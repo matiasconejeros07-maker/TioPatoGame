@@ -4353,6 +4353,7 @@
   /* ---------- V2: cambiar el nombre y eliminar la cuenta (los usa v2.js) ---------- */
   async function changeName(name) {                                // 'ok' | 'taken' | 'mail' | 'net' (las reglas del nombre y el plazo de 30 días los revisa v2.js antes)
     if (!AUTH || !session) return 'net';
+    if (window.V2 && V2.nube) { const r = await V2.nube.changeName(name); if (r === 'ok') { const st = await V2.nube.estado(); session.name = st.name; session.key = st.key; saveSession(); player.name = cleanName(st.name); savePlayer(); renderMenu(); } return r; }      // V2: en la app, el servidor nuevo
     if (!session.email) return 'mail';                             // las cuentas antiguas (nombre + contraseña) entran con su nombre: primero tienen que asociar un correo
     const uid = session.uid, key = acctKey(name), old = session.key;
     try {
@@ -4374,6 +4375,7 @@
   }
   async function deleteAccount() {                                 // borra la cuenta y todo lo suyo (requisito de Apple y Google); true si se pudo
     if (!AUTH || !session) return false;
+    if (window.V2 && V2.nube) { const ok = await V2.nube.deleteAccount(); if (ok) logout(); return ok; }      // V2: en la app, el servidor nuevo
     const uid = session.uid;
     try {
       const tok = await idToken(), auth = `auth=${encodeURIComponent(tok)}`;

@@ -88,7 +88,6 @@ Las pruebas de la V1 corren sobre el juego V2 (`JUEGO=../v2/juego`):
 
 ## Pendientes
 
-- Publicar la V2: agregar `v2.js`, `v2.css` y `fondos-worker.js` a la lista del `sw.js` (la caché sin conexión, hoy es la de la V1).
 
 - **Cambiar nombre y eliminar cuenta** funcionan en la demo, pero con las reglas de Firebase se rechazan (el nombre está atado al registro `names/` y el marcador no deja borrar filas). En el servidor nuevo ya están hechos y probados (`PUT /v2/account/name`, `DELETE /v2/account`); sobre Firebase harían falta funciones de servidor.
 - **Cuentas antiguas** (nombre + contraseña, sin correo): para cambiar el nombre primero tienen que asociar un correo, porque entran con su nombre.

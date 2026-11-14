@@ -84,6 +84,8 @@ export class AccountRepository {
     if (!row) throw new HttpError(403, 'sin_personaje_secreto');
   }
 
+  deleteVipContact(userId) { return this.sql`DELETE FROM vip_contacts WHERE user_id = ${userId}`; }
+
   /** Identidades SSO de la cuenta (para revocar el acceso de Apple al eliminarla). */
   identities(userId) { return this.sql`SELECT provider, refresh_token_enc FROM identities WHERE user_id = ${userId}`; }
 

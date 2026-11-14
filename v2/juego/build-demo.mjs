@@ -21,10 +21,10 @@ const styles = [...head.matchAll(/<style>[\s\S]*?<\/style>/g)].map((m) => m[0]).
 let page = body.replace(/^<body[^>]*>/, '').replace(/<\/body>[\s\S]*$/, '');
 const bodyClass = (body.match(/^<body class="([^"]*)"/) || [])[1] || '';
 page = page
-  .replace('<script src="config.js"></script>', scriptTag(read('demo/firebase-local.js')) + '\n' + scriptTag(read('demo/config.js')))
-  .replace('<script src="tienda.js"></script>', scriptTag(read('tienda.js')))
-  .replace('<script src="dialogos.js"></script>', scriptTag(read('dialogos.js')))
-  .replace('<script src="v2.js"></script>', scriptTag('window.__V2_FONDOS_WORKER = ' + JSON.stringify(fw.text) + ';') + '\n' + scriptTag(v2.text))
+  .replace('<script src="config.js"></script>', () => scriptTag(read('demo/firebase-local.js')) + '\n' + scriptTag(read('demo/config.js')))      // (con función: el texto
+  .replace('<script src="tienda.js"></script>', () => scriptTag(read('tienda.js')))                                                    //  insertado tiene «$'» y «$&»,
+  .replace('<script src="dialogos.js"></script>', () => scriptTag(read('dialogos.js')))                                               //  que replace() con texto interpreta)
+  .replace('<script src="v2.js"></script>', () => scriptTag('window.__V2_FONDOS_WORKER = ' + JSON.stringify(fw.text) + ';') + '\n' + scriptTag(v2.text))
   .replace(/if \('serviceWorker' in navigator[^\n]*\n[^\n]*\n/, '');                  // la demo no instala nada
 const out = `<title>Gánale al Tío Pato</title>
 <meta name="claude:viewport-fit-sides" content="cover">

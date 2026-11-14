@@ -24,6 +24,11 @@ export function gameController({ game, now = Date.now }) {
     return c.json(await game.finishMatch(uid(c), c.req.param('id'), { hits, playedMs: Number(playedMs) || 0 }, now()));
   });
 
+  router.post('/matches/:id/played', async (c) => {
+    if (!UUID_RE.test(c.req.param('id'))) throw new HttpError(422, 'partida_invalida');
+    return c.json(await game.setPlayed(uid(c), c.req.param('id'), jsonBody(c).playedMs));
+  });
+
   router.post('/streak/claim', async (c) => c.json(await game.claimStreak(uid(c), now())));
   router.post('/streak/boost', async (c) => { const { mult, from } = jsonBody(c); return c.json(await game.activateBoost(uid(c), { mult, from }, now())); });
 
@@ -60,6 +65,7 @@ export function gameController({ game, now = Date.now }) {
 /** Marcadores públicos (sin sesión): los ve cualquiera, también el Modo Práctica de la web. Se guardan 30 s en caché. */
 export function publicLeaderboards({ game, now = Date.now }) {
   const router = new Hono();
+  router.get('/hist', async (c) => { c.header('Cache-Control', 'public, max-age=30'); return c.json({ counts: await game.histogram() }); });
   router.get('/:kind', async (c) => {
     if (!KINDS.has(c.req.param('kind'))) throw new HttpError(422, 'marcador_invalido');
     c.header('Cache-Control', 'public, max-age=30');

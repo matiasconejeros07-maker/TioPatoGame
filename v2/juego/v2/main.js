@@ -6,6 +6,10 @@ import { AudioService } from '../../app/src/services/AudioService.js';
 import { Ambiente } from './ambiente.js';
 import { Fondos } from './fondos.js';
 import { registrarBarras } from './barras.js';
+import { instalarNube } from './nube.js';
+
+// En la app, con sesión del servidor nuevo: el juego guarda todo en la API V2 en vez de Firebase (ver nube.js).
+const nube = instalarNube();
 
 const cuenta = new CuentaV2(), prefs = new PreferenciasV2(), partida = new PartidaV2(), vista = new VistaV2();
 let api = null, ctl = null;
@@ -75,6 +79,7 @@ window.V2 = {
   },
 
   get mode() { return prefs.modo; },
+  nube,
   nameProblem: (n) => ctl?.nombre.problema(n) ?? null,
 
   setMode(m) { prefs.modo = m === 'arcade' ? 'arcade' : 'classic'; },

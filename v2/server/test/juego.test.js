@@ -24,7 +24,7 @@ test('estado inicial de una cuenta nueva (formato de la V1)', { skip }, async (t
   const { status, json } = await ana.call('GET', '/state');
   assert.equal(status, 200);
   assert.equal(json.name, 'Ana');
-  assert.deepEqual(json.wallet, { c: 0, sp: 0, own: {}, eq: Object.fromEntries(E.CATEGORIAS.map((c) => [c, E.defaultItem(c)])) });
+  assert.deepEqual(json.wallet, { c: 0, sp: 0, lr: 0, own: {}, eq: Object.fromEntries(E.CATEGORIAS.map((c) => [c, E.defaultItem(c)])) });
   assert.equal(json.streak, null); assert.equal(json.stats, null); assert.equal(json.ruleta, null);
   assert.deepEqual(json.scores, { s: 0, t: null, ms: 0 });
   assert.deepEqual(json.v2, { pu: {}, na: false, nc: null });
@@ -223,4 +223,29 @@ test('CORS: la app (Capacitor) puede llamar a la API; otros sitios no', { skip }
   assert.equal((await pre('https://localhost')).headers.get('access-control-allow-origin'), 'https://localhost');
   assert.equal((await pre('capacitor://localhost')).headers.get('access-control-allow-origin'), 'capacitor://localhost');
   assert.equal((await pre('https://sitio-malo.example')).headers.get('access-control-allow-origin'), null);
+});
+
+test('arcade no cuenta para misiones ni semana; el tiempo medido se corrige una vez; hist y VIP', { skip }, async (t) => {
+  const ctx = await setup(t); noonChile(ctx.clock);
+  const ana = await ctx.newPlayer('Ana');
+  const arc = await play(ctx, ana, 40, { mode: 'arcade' });
+  assert.equal(arc.json.stats, null, 'una partida arcade no suma a las misiones');
+  assert.deepEqual((await (await ctx.app.request('/leaderboards/w')).json()).rows, []);
+  // cobro sin medición y después el juego informa lo que midió (como en la V1)
+  const s = (await ana.call('POST', '/matches', { mode: 'classic' })).json; ctx.clock.now += 30_000;
+  const fin = await ana.call('POST', `/matches/${s.matchId}/finish`, { hits: 30 });
+  assert.equal(fin.json.playedInc, 30_000 - E.ECO.tiempo.cuentaMs);
+  const st0 = (await ana.call('GET', '/state')).json;
+  assert.equal(st0.wallet.lr, s.s, 'la cartera dice cuál fue la última partida cobrada');
+  const pl = await ana.call('POST', `/matches/${s.matchId}/played`, { playedMs: 28_000 });
+  assert.equal(pl.json.inc, 28_000);
+  assert.equal((await ana.call('POST', `/matches/${s.matchId}/played`, { playedMs: 1 })).json.inc, 28_000, 'se corrige una sola vez');
+  assert.equal((await ana.call('GET', '/state')).json.scores.ms, st0.scores.ms - fin.json.playedInc + 28_000);
+  const hist = (await (await ctx.app.request('/leaderboards/hist')).json()).counts;
+  assert.equal(hist.length, E.ECO.hMax + 1); assert.equal(hist[30], 1); assert.equal(hist.reduce((a, b) => a + b, 0), 1);
+  await ctx.sql`INSERT INTO inventory (user_id, item_id) VALUES (${ana.id}, ${'ch_' + E.SECRET_ID})`;
+  assert.equal((await ana.call('PUT', '/account/vip', { whatsapp: '+56912345678', consent: true })).status, 204);
+  assert.equal((await ana.call('GET', '/state')).json.vip.w, '+56912345678');
+  assert.equal((await ana.call('DELETE', '/account/vip')).status, 204);
+  assert.equal((await ana.call('GET', '/state')).json.vip, null);
 });

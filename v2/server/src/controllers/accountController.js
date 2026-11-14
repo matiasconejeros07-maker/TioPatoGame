@@ -47,5 +47,7 @@ export function accountController({ accounts, firebaseTokens, identityProviders,
     await accounts.saveVipContact(userId(c), { whatsapp, consent });
     return c.body(null, 204);
   });
+  // El jugador retira su WhatsApp del grupo VIP.
+  router.delete('/vip', async (c) => { await accounts.deleteVipContact(userId(c)); return c.body(null, 204); });
   return router;
 }
