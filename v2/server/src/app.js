@@ -1,18 +1,29 @@
 // Arma la API a partir de sus dependencias (así las pruebas pasan dobles y producción pasa las reales).
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { signedRequest } from './middleware/signedRequest.js';
 import { authController } from './controllers/authController.js';
 import { purchasesController } from './controllers/purchasesController.js';
 import { accountController } from './controllers/accountController.js';
 import { matchesController } from './controllers/matchesController.js';
 import { webhooksController } from './controllers/webhooksController.js';
+import { gameController, publicLeaderboards } from './controllers/gameController.js';
 import { HttpError } from './services/errors.js';
 
-const MAX_BODY_BYTES = 16 * 1024;      // ninguna petición legítima se acerca (las atestaciones pesan ~6 KB)
+const MAX_BODY_BYTES = 16 * 1024;
+/** Desde dónde se puede llamar a la API: la app (Capacitor en Android e iOS) y la web del Modo Práctica (solo marcadores). */
+export const DEFAULT_ORIGINS = ['https://localhost', 'capacitor://localhost', 'http://localhost'];      // ninguna petición legítima se acerca (las atestaciones pesan ~6 KB)
 
 export function createApp(deps) {
   const { sessions, nonces, masterSecret, now } = deps;
   const app = new Hono();
+  const origins = [...DEFAULT_ORIGINS, ...(deps.webOrigins ?? [])];
+  app.use(cors({
+    origin: (o) => (origins.includes(o) ? o : null),
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowHeaders: ['content-type', 'x-session', 'x-timestamp', 'x-nonce', 'x-signature'],
+    maxAge: 86400,
+  }));
   app.onError((error, c) => {
     if (error instanceof HttpError) {
       if (error.status === 403) console.warn(error.code, error.message);     // por qué falló una atestación (no se le dice al cliente)
@@ -30,6 +41,7 @@ export function createApp(deps) {
   // Sin sesión: inicio de sesión (atestación + SSO) y avisos de las tiendas.
   app.route('/auth', authController(deps));
   app.route('/webhooks', webhooksController(deps));
+  app.route('/leaderboards', publicLeaderboards(deps));
 
   // Con sesión: toda petición va firmada con HMAC.
   const api = new Hono();
@@ -37,6 +49,7 @@ export function createApp(deps) {
   api.route('/purchases', purchasesController(deps));
   api.route('/account', accountController(deps));
   api.route('/matches', matchesController(deps));
+  api.route('/', gameController(deps));
   app.route('/v2', api);
   return app;
 }

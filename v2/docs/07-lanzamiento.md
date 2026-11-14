@@ -31,7 +31,7 @@ hecho todavía es correrlo con tu exportación real: ese es el primer ensayo del
 | Esquema de la base (PostgreSQL) y marcadores (Redis) | ✅ hecho y probado |
 | Migración desde Firebase | ✅ hecha y probada con ejemplo · ⏳ falta ensayo con tus datos reales |
 | Servidor: inicio de sesión con Play Games/Apple, 1 dispositivo por cuenta, firma de peticiones, compras con verificación, reembolsos, power-ups, cambiar nombre, eliminar cuenta, reclamar cuenta antigua | ✅ hecho y probado |
-| Servidor: terminar partida y guardar puntaje (con antitrampas), billetera, tienda con pesos, equipar, racha, ruleta, misiones/logros, marcadores, emblema/perfil | ❌ **falta** |
+| Servidor: terminar partida y guardar puntaje (con antitrampas), billetera, tienda con pesos, equipar, racha, ruleta, misiones/logros, marcadores, emblema/perfil | ✅ hecho y probado (`GameRepository`, `shared/economia.js`, 21 pruebas nuevas) |
 | Juego V2 hablando con el servidor nuevo (hoy habla con Firebase) | ❌ **falta** |
 | App Android (Capacitor) con Play Games, Google Play Billing, AdMob y Play Integrity | ❌ **falta** (diseñada en los documentos 03 y 04) |
 | Cuentas en los servicios (Play Console, Cloudflare, base de datos, Redis, dominio, AdMob) | ❌ falta: las creas tú |

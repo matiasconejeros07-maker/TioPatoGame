@@ -5,6 +5,7 @@ import { PurchaseRepository } from '../src/repositories/PurchaseRepository.js';
 import { AccountRepository } from '../src/repositories/AccountRepository.js';
 import { AuthRepository } from '../src/repositories/AuthRepository.js';
 import { MatchRepository } from '../src/repositories/MatchRepository.js';
+import { GameRepository } from '../src/repositories/GameRepository.js';
 import { PurchaseService } from '../src/services/PurchaseService.js';
 import { AuthService } from '../src/services/AuthService.js';
 import { ChallengeStore, MemoryRedis, NonceStore, RateLimiter } from '../src/services/stores.js';
@@ -58,7 +59,7 @@ export async function setup(t) {
   const app = createApp({
     masterSecret: MASTER, now,
     sessions: new SessionRepository(sql), nonces: new NonceStore(redis), rateLimiter: new RateLimiter(redis),
-    accounts: new AccountRepository(sql), matches: new MatchRepository(sql), firebaseTokens, identityProviders, secretBox,
+    accounts: new AccountRepository(sql), matches: new MatchRepository(sql), game: new GameRepository(sql), firebaseTokens, identityProviders, secretBox,
     authService: new AuthService({
       challenges: new ChallengeStore(redis), auth: new AuthRepository(sql), identityProviders, secretBox, masterSecret: MASTER,
       attestors: { ios: fakeAttestor('ios'), android: fakeAttestor('android') },

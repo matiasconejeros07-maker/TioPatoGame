@@ -6,6 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 # El bundle id / nombre de paquete y los ids de los productos NO van aquí: están en ../shared/ids.js
 
 [vars]
+WEB_ORIGINS = ""                           # dominio de la web (Modo Práctica), p. ej. "https://tiopato.cl"
 FIREBASE_PROJECT_ID = "juegotiopato"       # solo para reclamar cuentas de la V1
 ALLOW_SANDBOX = "false"                    # "true" en el ambiente de pruebas y mientras Apple revisa la app
 APP_ATTEST_ENVIRONMENT = "production"      # "development" solo para compilaciones de desarrollo de Xcode

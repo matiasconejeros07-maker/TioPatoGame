@@ -29,6 +29,9 @@ jobs:
       - name: App, servidor y migración (modelos, controladores, API contra PostgreSQL)
         working-directory: v2
         run: npm test
+      - name: El catálogo del servidor (shared/tienda-datos.js) está al día con juego/tienda.js
+        working-directory: v2
+        run: node shared/generar-tienda.mjs --check
       - name: El Worker de Cloudflare empaqueta
         working-directory: v2/server
         run: npx wrangler deploy --dry-run --outdir /tmp/worker

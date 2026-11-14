@@ -9,6 +9,7 @@ import { PurchaseRepository } from './repositories/PurchaseRepository.js';
 import { AccountRepository } from './repositories/AccountRepository.js';
 import { AuthRepository } from './repositories/AuthRepository.js';
 import { MatchRepository } from './repositories/MatchRepository.js';
+import { GameRepository } from './repositories/GameRepository.js';
 import { PurchaseService } from './services/PurchaseService.js';
 import { AuthService } from './services/AuthService.js';
 import { AppleStoreVerifier } from './services/AppleStoreVerifier.js';
@@ -35,11 +36,12 @@ export default {
     };
     const app = createApp({
       masterSecret: env.MASTER_SECRET,
+      webOrigins: (env.WEB_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),     // p. ej. https://tiopato.cl (Modo Práctica)
       sessions: new SessionRepository(sql),
       nonces: new NonceStore(redis),
       rateLimiter: new RateLimiter(redis),
       accounts: new AccountRepository(sql),
-      matches: new MatchRepository(sql),
+      matches: new MatchRepository(sql), game: new GameRepository(sql),
       firebaseTokens: new FirebaseTokenVerifier({ projectId: env.FIREBASE_PROJECT_ID }),
       identityProviders, secretBox,
       authService: new AuthService({
