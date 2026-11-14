@@ -217,3 +217,81 @@
   .seg.dtabs button { position: relative; }
   .seg.dtabs button.dot::after { width: 12px; height: 12px; top: 2px; right: 6px; box-shadow: 0 0 8px rgba(229, 40, 28, .8); animation: v2pulse 1.3s ease-in-out infinite; }
   .mbadge2 { background: #e5281c; box-shadow: 0 0 0 2px #fff, 0 0 10px rgba(229, 40, 28, .6); animation: v2pulse 1.3s ease-in-out infinite; }
+
+/* =====================================================================================================================
+   BARRAS V2 · cuerpos rediseñados (los efectos de luz y partículas están en v2/barras.js)
+   ===================================================================================================================== */
+/* Llamarada: roca volcánica con grietas de lava que laten */
+body #paddle.p-fuego, body .pvbar.p-fuego {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='16' viewBox='0 0 60 16'%3E%3Cpath d='M0 9 L7 7 L11 10 L17 5 L22 8 L26 3 L31 9 L37 7 L41 11 L46 6 L52 9 L56 4 L60 8 M17 5 L19 0 M31 9 L30 16 M46 6 L49 0 M7 7 L6 16 M41 11 L44 16' fill='none' stroke='%23ffcf4a' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 0 50% / auto 100% repeat-x,
+    radial-gradient(120% 140% at 50% 120%, #ff5a12 0%, rgba(255,90,18,0) 55%),
+    linear-gradient(180deg, #5a463e 0%, #2b1d18 45%, #140b08 100%);
+  box-shadow: 0 0 10px rgba(255,120,30,.9), 0 0 26px rgba(255,80,10,.55), 0 -6px 22px rgba(255,140,30,.35), inset 0 1px 0 rgba(255,210,170,.35), inset 0 -2px 4px rgba(255,90,10,.7);
+  animation: lavaPulso 1.3s ease-in-out infinite alternate;
+}
+body #paddle.p-fuego::before, body .pvbar.p-fuego::before { inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='16' viewBox='0 0 60 16'%3E%3Cpath d='M0 9 L7 7 L11 10 L17 5 L22 8 L26 3 L31 9 L37 7 L41 11 L46 6 L52 9 L56 4 L60 8' fill='none' stroke='%23fff6c8' stroke-width='.6'/%3E%3C/svg%3E") 0 50% / auto 100% repeat-x; filter: drop-shadow(0 0 2px #ff9a1c); animation: lavaGrieta .9s ease-in-out infinite alternate; }
+body #paddle.p-fuego::after, body .pvbar.p-fuego::after { inset: 0; border-radius: inherit; background: linear-gradient(90deg, transparent, rgba(255,170,60,.55), transparent) 0 0 / 40% 100% no-repeat; mix-blend-mode: screen; animation: lavaFluye 2.6s linear infinite; }
+@keyframes lavaPulso { from { filter: brightness(.92) saturate(1); } to { filter: brightness(1.12) saturate(1.25); } }
+@keyframes lavaGrieta { from { opacity: .35; } to { opacity: 1; } }
+@keyframes lavaFluye { from { background-position: -60% 0; } to { background-position: 160% 0; } }
+
+/* Tormenta eléctrica: cápsula de vidrio oscuro con electrodos de cobre y un filamento de plasma */
+body #paddle.p-plasma, body .pvbar.p-plasma {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 40%, rgba(0,0,0,.35)) 0 0 / 100% 100%,
+    linear-gradient(90deg, #6b3d1c 0, #f0a868 2.5%, #b8682e 5%, #4a2a12 6.5%, transparent 6.5% 93.5%, #4a2a12 93.5%, #b8682e 95%, #f0a868 97.5%, #6b3d1c 100%),
+    radial-gradient(60% 120% at 50% 50%, #3b2aa8 0%, #1b1260 60%, #0a0628 100%);
+  box-shadow: 0 0 8px #4fe6ff, 0 0 22px rgba(122,92,255,.8), 0 0 48px rgba(60,180,255,.3), inset 0 0 6px rgba(80,220,255,.6), inset 0 -2px 3px rgba(0,0,0,.6);
+  animation: tormentaLuz .7s steps(3) infinite;
+}
+body #paddle.p-plasma::before, body .pvbar.p-plasma::before { inset: 0 6%; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='16' viewBox='0 0 40 16'%3E%3Cpath d='M0 8 L4 5 L7 10 L11 4 L14 11 L18 6 L21 9 L25 3 L28 12 L32 6 L36 9 L40 8' fill='none' stroke='%23e8fdff' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") 0 50% / auto 100% repeat-x; filter: drop-shadow(0 0 2px #5ff0ff) drop-shadow(0 0 3px #8f7aff); animation: tormentaFil .18s steps(1) infinite; }
+body #paddle.p-plasma::after, body .pvbar.p-plasma::after { left: 0; right: 0; top: 0; height: 40%; border-radius: 999px 999px 40% 40%; background: linear-gradient(rgba(255,255,255,.45), rgba(255,255,255,0)); }
+@keyframes tormentaFil { 0% { background-position: 0 50%; transform: scaleY(1); } 25% { background-position: -13px 50%; transform: scaleY(-1); } 50% { background-position: -27px 50%; transform: scaleY(.7); } 75% { background-position: -7px 50%; transform: scaleY(-1.2); } }
+@keyframes tormentaLuz { 0% { filter: brightness(1); } 33% { filter: brightness(1.35); } 66% { filter: brightness(.9); } }
+
+/* Núcleo radiactivo: tapas metálicas con franjas de peligro y un cilindro de vidrio con plutonio verde burbujeante */
+#paddle.p-nuclear, .pvbar.p-nuclear {
+  background:
+    repeating-linear-gradient(-45deg, #ffd21a 0 3px, #1a1a1a 3px 6px) 0 0 / 7% 100% no-repeat,
+    repeating-linear-gradient(-45deg, #ffd21a 0 3px, #1a1a1a 3px 6px) 100% 0 / 7% 100% no-repeat,
+    linear-gradient(90deg, transparent 7%, #b9c2c8 7% 9%, transparent 9% 91%, #b9c2c8 91% 93%, transparent 93%),
+    linear-gradient(180deg, #c6ff8a 0%, #6dff3a 30%, #2fd60f 62%, #0f6e05 100%);
+  box-shadow: 0 0 10px #8dff4a, 0 0 26px rgba(110,255,60,.75), 0 0 56px rgba(70,230,40,.35), inset 0 1px 0 rgba(240,255,220,.9), inset 0 -3px 4px rgba(0,60,0,.6);
+  animation: nuclearLatido 1.2s ease-in-out infinite;
+}
+#paddle.p-nuclear::before, .pvbar.p-nuclear::before { inset: 0 9%; background:
+    radial-gradient(circle, rgba(240,255,210,.95) 0 1.3px, transparent 1.8px) 0 0 / 13px 9px,
+    radial-gradient(circle, rgba(220,255,180,.8) 0 .9px, transparent 1.3px) 5px 4px / 9px 7px;
+  animation: nuclearBurbujas 1.6s linear infinite; }
+#paddle.p-nuclear::after, .pvbar.p-nuclear::after { left: 9%; right: 9%; top: 12%; height: 30%; border-radius: 999px; background: linear-gradient(rgba(255,255,255,.75), rgba(255,255,255,0)); box-shadow: 0 0 6px rgba(220,255,180,.8); }
+@keyframes nuclearBurbujas { from { background-position: 0 16px, 5px 20px; } to { background-position: 0 -2px, 5px 6px; } }
+@keyframes nuclearLatido { 0%, 100% { filter: brightness(1) saturate(1); } 12% { filter: brightness(1.35) saturate(1.3); } 24% { filter: brightness(1.05); } }
+
+/* Neón: ahora un tubo de vidrio con casquillos metálicos (los electrones los dibuja el canvas) */
+body #paddle.p-neon, body .pvbar.p-neon {
+  background:
+    linear-gradient(90deg, #6b6f7a 0 4%, transparent 4% 96%, #6b6f7a 96%),
+    linear-gradient(180deg, rgba(255,255,255,.35), transparent 35%),
+    linear-gradient(90deg, #ff2bd6, #b04bff 50%, #ff2bd6);
+  animation: neonPulse 1.5s ease-in-out infinite alternate, neonFalla 5.3s steps(1) infinite;
+}
+@keyframes neonFalla { 0%, 61%, 63%, 65%, 100% { opacity: 1; } 62%, 64% { opacity: .45; } }
+
+/* Cristal: hielo facetado con escarcha en los bordes */
+body #paddle.p-cristal::before, body .pvbar.p-cristal::before { inset: 0; background: repeating-linear-gradient(115deg, transparent 0 8px, rgba(255,255,255,.75) 8px 9px, transparent 9px 15px, rgba(140,190,255,.35) 15px 16px); }
+
+/* Rey Midas: corona grabada al centro de la barra */
+body #paddle.p-midas::before, body .pvbar.p-midas::before { inset: 1px 0; background:
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 14'%3E%3Cpath d='M2 12 L3 4 L8 8 L12 2 L16 8 L21 4 L22 12 Z' fill='%23a86a00' fill-opacity='.65' stroke='%23fff3b0' stroke-width='.8'/%3E%3C/svg%3E") 50% 50% / auto 85% no-repeat,
+  radial-gradient(circle at 50% 50%, transparent 0 34%, rgba(140,80,0,.45) 36% 44%, transparent 46%) 0 0 / 24px 100%; }
+
+@media (prefers-reduced-motion: reduce) { #paddle.p-nuclear, .pvbar.p-nuclear, #paddle.p-nuclear::before, .pvbar.p-nuclear::before { animation: none !important; } }
+
+
+/* =====================================================================================================================
+   FONDOS V2 · escenas pintadas en canvas (v2/fondos.js). Synthwave, Agujero negro y el clásico quedan como en la V1.
+   ===================================================================================================================== */
+.bgx > canvas.v2bg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; z-index: 0; }
+.bgx[data-bg="atardecer"] > i, .bgx[data-bg="cristal"] > i, .bgx[data-bg="aurora"] > i, .bgx[data-bg="galaxia"] > i, .bgx[data-bg="holo"] > i, .bgx[data-bg="boveda"] > i, .bgx[data-bg="prisma"] > i { display: none !important; }
+.bgx[data-bg="atardecer"]::before, .bgx[data-bg="cristal"]::before, .bgx[data-bg="aurora"]::before, .bgx[data-bg="galaxia"]::before, .bgx[data-bg="holo"]::before, .bgx[data-bg="boveda"]::before, .bgx[data-bg="prisma"]::before, .bgx[data-bg="atardecer"]::after, .bgx[data-bg="cristal"]::after, .bgx[data-bg="aurora"]::after, .bgx[data-bg="galaxia"]::after, .bgx[data-bg="holo"]::after, .bgx[data-bg="boveda"]::after, .bgx[data-bg="prisma"]::after { content: none !important; }

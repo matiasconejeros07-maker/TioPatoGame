@@ -1724,9 +1724,10 @@
         }
         g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
       },
-      clear() { pf.length = 0; rg.length = 0; acc[0] = acc[1] = 0; st.bolts = null; st.flares = []; },
+      clear() { pf.length = 0; rg.length = 0; acc[0] = acc[1] = 0; for (const k in st) if (k !== 'geo') delete st[k]; st.flares = []; },
       hit(id, x, y) {                                            // rebote: anillo + lo propio de cada barra
         const f = PAD_FX[id]; if (!f) return; const [L, T, w, h] = st.geo || [x - 40, y, 80, 16];
+        if (f.onHit) { f.onHit(st, x, y, L, T, w, h); return; }      // V2: cada barra tiene su propio rebote
         rg.push({ x, y: y + h / 2, life: 1, c: f.ring });
         if (id === 'fuego') { for (let i = 0; i < 9; i++) add(f, 'ember', L, T, w, h, x + (rnd() - .5) * w * .5); for (let i = 0; i < 3; i++) add(f, 'lick', L, T, w, h, x + (rnd() - .5) * w * .4); }
         else if (id === 'midas') for (let i = 0; i < 5; i++) add(f, 'coin', L, T, w, h, x + (rnd() - .5) * 30);
@@ -4396,7 +4397,7 @@
       if (state !== 'play' || !PUPS[k] || pupFx[k] > 0) return false;
       pupFx[k] = PUPS[k].ms; spawn('pop gold', W / 2, H * .42, PUPS[k].n); tone(k === 'freeze' ? 1200 : k === 'wide' ? 700 : 880, .12, 'triangle', .12); vib(14); return true;
     },
-    pupLeft: k => pupFx[k] || 0, changeName, deleteAccount, showScreen: show,
+    pupLeft: k => pupFx[k] || 0, padFx: PAD_FX, changeName, deleteAccount, showScreen: show,
   });
 
   nameInput.value = player.name;

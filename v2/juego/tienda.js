@@ -104,16 +104,17 @@ window.TIENDA = {
   // Barras: cada una con sus propios efectos (brillos, chispas, anillos al rebotar).
   pad: [
     { id: 'clasica',  n: 'Clásica',      price: 0,   note: 'Negra y sencilla' },
-    { id: 'dorada',   n: 'Oro líquido',  price: 220, note: 'Metal con destellos' },
-    { id: 'fuego',    n: 'Llamarada',    price: 280, note: 'Fuego de verdad, con brasas' },
-    { id: 'cristal',  n: 'Cristal',      price: 300, note: 'Vidrio con prisma' },
-    { id: 'neon',     n: 'Neón',         price: 350, note: 'Brilla y cambia de color' },
-    { id: 'galaxia',  n: 'Galaxia',      price: 400, note: 'Estrellas en movimiento' },
-    { id: 'arcoiris', n: 'Arcoíris',     price: 450, note: 'Colores que fluyen' },
-    { id: 'holo',     n: 'Holográfica',  price: 500, note: 'Iridiscente con destellos' },
+    { id: 'dorada',   n: 'Oro líquido',  price: 220, note: 'Gotas de oro que se derriten' },
+    { id: 'fuego',    n: 'Llamarada',    price: 280, note: 'Roca volcánica en llamas, con brasas y humo' },
+    { id: 'cristal',  n: 'Cristal',      price: 300, note: 'Esquirlas de hielo y vaho frío' },
+    { id: 'neon',     n: 'Neón',         price: 350, note: 'Tubo de letrero con electrones' },
+    { id: 'galaxia',  n: 'Galaxia',      price: 400, note: 'Polvo de estrellas en órbita y cometas' },
+    { id: 'arcoiris', n: 'Arcoíris',     price: 450, note: 'Cintas de seda de colores' },
+    { id: 'holo',     n: 'Holográfica',  price: 500, note: 'Proyecta un holograma 3D' },
     { id: 'midas',    n: 'Rey Midas',    price: 3000000,  vip: true, note: 'Todo lo que toca se vuelve monedas' },
     { id: 'diamante', n: 'Diamante',     price: 6000000,  vip: true, note: 'Facetas que lanzan arcoíris' },
-    { id: 'plasma',   n: 'Tormenta eléctrica', price: 12000000, vip: true, note: 'Rayos que saltan en cada rebote' }
+    { id: 'nuclear',  n: 'Núcleo radiactivo', price: 8000000, vip: true, note: 'Cilindro de plutonio que brilla y gotea' },
+    { id: 'plasma',   n: 'Tormenta eléctrica', price: 12000000, vip: true, note: 'Rayos que saltan entre electrodos' }
   ],
 
   // Pelotas: monedas y billetes chilenos. rate = pesos que paga cada punto (se multiplica por «Monedas dobles» desde el rebote 100).

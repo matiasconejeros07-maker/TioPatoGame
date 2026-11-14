@@ -4,6 +4,8 @@ import { DatosController, PowerUpController, ComprasController, AnunciosControll
 import { VistaV2 } from './vistas.js';
 import { AudioService } from '../../app/src/services/AudioService.js';
 import { Ambiente } from './ambiente.js';
+import { Fondos } from './fondos.js';
+import { registrarBarras } from './barras.js';
 
 const cuenta = new CuentaV2(), prefs = new PreferenciasV2(), partida = new PartidaV2(), vista = new VistaV2();
 let api = null, ctl = null;
@@ -69,7 +71,7 @@ window.V2 = {
       ctl.datos.asegurar();
       setInterval(() => { if (api.session && cuenta.uid !== api.session.uid) ctl.datos.asegurar(); else if (!api.session && cuenta.uid) ctl.datos.asegurar(); }, 2000);
     }, 5000);
-    new Ambiente();
+    new Ambiente(); new Fondos(); registrarBarras(api.padFx);
   },
 
   get mode() { return prefs.modo; },

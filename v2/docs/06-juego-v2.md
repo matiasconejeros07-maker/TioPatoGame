@@ -19,7 +19,8 @@ La V2 del juego es **la V1 completa** (`v2/juego/`, copia de `index.html`, `tien
 | **Anuncios** cada 5 partidas, solo al salir del resumen; «Sin anuncios» los quita. **Privacidad** (consentimiento) la primera vez, en el menú (nunca encima de una partida) | `AnunciosController` |
 | **Cambiar nombre** una vez cada 30 días, con **filtro de groserías** (también al crear la cuenta) | `NombreController`, `changeName` en `index.html`, `shared/profanity.js` |
 | **Eliminar cuenta** en Ajustes | `deleteAccount` en `index.html` |
-| **Fondos**: los de la V1, con una capa animada propia de cada uno (polvo de oro, nieve, luciérnagas y estrellas fugaces, burbujas iridiscentes, chispas neón, destellos, espiral del agujero negro) | `v2/ambiente.js` |
+| **Fondos rediseñados** (escenas pintadas y animadas en canvas, 30 cuadros/s, quietas en «modo liviano»): Atardecer (sol con rayos, nubes iluminadas, islas, reflejo en el mar, gaviotas), Cristal helado (cueva de hielo, haces de luz, cristales facetados, nieve en capas), Aurora boreal (cortinas con reflejo en el lago, montañas nevadas, pinos, estrellas fugaces), Galaxia (espiral de 1.500 estrellas que gira, nebulosas), Holográfica (lámina iridiscente, panal con onda de luz, prismas flotando), Bóveda de oro (puerta con volante girando, montaña de lingotes, monedas cayendo) y Palacio de diamante (brillante 3D girando con reflejos, rayos de arcoíris, columnas). **Synthwave y Agujero negro quedan como estaban**, con su capa de partículas | `v2/fondos.js`, `v2/ambiente.js` |
+| **Barras rediseñadas**, cada una con identidad propia (cuerpo en CSS + efectos en el canvas del juego y en la tienda): **Llamarada** (roca volcánica con grietas de lava; lenguas de fuego en tres capas que se avivan al rebotar, humo, brasas con estela), **Tormenta eléctrica** (cápsula con electrodos de cobre y filamento de plasma; rayos ramificados con destello, arco entre electrodos, chispas con gravedad, orbes), **Núcleo radiactivo** (nueva, VIP $8.000.000: cilindro verde con tapas de peligro y burbujas; halo que late como contador Geiger, partículas, símbolo ☢, gotas tóxicas, onda al rebotar), Oro líquido (gotas que se derriten), Cristal (esquirlas de hielo y vaho), Neón (tubo de letrero con casquillos y electrones), Galaxia (polvo de estrellas en órbita y cometa), Arcoíris (cintas de seda), Holográfica (proyector con cubo 3D), Rey Midas (monedas acuñadas con corona grabada) y Diamante (destellos y haces de dispersión) | `v2/barras.js`, `v2.css`, `padFx` en el puente |
 | **Lingotes y diamante** con halo, brillo y prisma; la billetera brilla cuando llevas uno | `v2.css` |
 | **El Pato**: respira en la cancha, salta con «Monedas dobles» y se burla en el resumen | `v2.css`, `index.html` |
 | **Botones premium** (Tienda, Marcadores, Misiones, Jugar, Ajustes) e **ícono propio de la tienda** (un puesto con toldo y moneda) en lugar del emoji | `index.html`, `v2.css` |
@@ -31,7 +32,7 @@ La V2 del juego es **la V1 completa** (`v2/juego/`, copia de `index.html`, `tien
 - Lo nuevo vive en `v2/` con el patrón M.V.C:
   - `modelo.js`: solo datos (getters y setters) — cuenta V2, preferencias del teléfono, partida.
   - `controladores.js`: toda la lógica — power-ups, compras, anuncios, nombre, sonido, datos.
-  - `vistas.js` y `ambiente.js`: dibujan y avisan de los toques.
+  - `vistas.js`, `ambiente.js`, `fondos.js` y `barras.js`: dibujan y avisan de los toques.
   - `main.js`: arma todo y expone `window.V2`, lo que llama el juego.
 - `build-demo.mjs` empaqueta `v2/*.js` en `v2.js` (el archivo que se publica junto a `index.html`) y arma la demo de una sola página.
 

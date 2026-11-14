@@ -2,14 +2,7 @@
 // partículas: suben, caen, titilan o giran según el tema. Solo corre mientras el fondo premium se ve (en la partida),
 // a 30 cuadros por segundo, y se apaga en el «modo liviano» de la V1 o con «reducir movimiento».
 const ESTILOS = {
-  atardecer: { n: 26, tipo: 'mota', col: ['#fff3c4', '#ffd2a8', '#ffb3c8'], vy: [-12, -4], r: [1, 2.6], glow: 8 },
-  cristal: { n: 40, tipo: 'copo', col: ['#ffffff', '#e2f2ff', '#cfe6ff'], vy: [14, 34], r: [1.2, 3], glow: 6, vaiven: 18 },
-  aurora: { n: 34, tipo: 'luciernaga', col: ['#8fffd8', '#b8ffef', '#a8c8ff'], vy: [-8, 4], r: [1, 2.2], glow: 10, fugaz: 0.004 },
-  galaxia: { n: 50, tipo: 'estrella', col: ['#ffffff', '#d9e4ff', '#ffd9fb'], vy: [0, 0], r: [.6, 1.8], glow: 6, fugaz: 0.01 },
-  holo: { n: 22, tipo: 'burbuja', col: ['#ffb8e6', '#b8f3ff', '#fff2b8', '#c9b8ff'], vy: [-26, -12], r: [5, 14], glow: 0 },
   synth: { n: 30, tipo: 'chispa', col: ['#ff4fd8', '#46e6ff', '#ffd23f'], vy: [-40, -18], r: [1, 2.2], glow: 12 },
-  boveda: { n: 46, tipo: 'oro', col: ['#ffe27a', '#ffc928', '#fff6c2'], vy: [10, 26], r: [1, 2.6], glow: 9 },
-  prisma: { n: 34, tipo: 'destello', col: ['#ffffff', '#9ae6ff', '#ffb3f0', '#fff3a0'], vy: [-6, 6], r: [1.5, 3.4], glow: 12 },
   agujero: { n: 70, tipo: 'espiral', col: ['#ffb36b', '#ff6b3d', '#ffe2b8', '#ffffff'], r: [.8, 2.2], glow: 8 },
 };
 const azar = (a, b) => a + Math.random() * (b - a);
