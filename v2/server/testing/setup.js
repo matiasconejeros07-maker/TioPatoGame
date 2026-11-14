@@ -57,7 +57,7 @@ export async function setup(t) {
   const secretBox = new SecretBox(MASTER);
   const firebaseTokens = { async verify(token) { if (!token.startsWith('fb:')) throw new HttpError(401, 'sesion_antigua_invalida'); return token.slice(3); } };
   const app = createApp({
-    masterSecret: MASTER, now,
+    masterSecret: MASTER, now, sessionLimiter: { allow: (k) => new RateLimiter(redis).allow(k, 600, 60) },
     sessions: new SessionRepository(sql), nonces: new NonceStore(redis), rateLimiter: new RateLimiter(redis),
     accounts: new AccountRepository(sql), matches: new MatchRepository(sql), game: new GameRepository(sql), firebaseTokens, identityProviders, secretBox,
     authService: new AuthService({

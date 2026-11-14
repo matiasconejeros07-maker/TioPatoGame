@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { jsonBody } from '../middleware/signedRequest.js';
+import { jsonBody, olvidarSesion } from '../middleware/signedRequest.js';
 import { HttpError } from '../services/errors.js';
 import { checkName } from '../../../shared/names.js';
 
@@ -36,6 +36,7 @@ export function accountController({ accounts, firebaseTokens, identityProviders,
       try { await identityProviders[identity.provider].revoke(await secretBox.open(identity.refresh_token_enc)); } catch (error) { console.error('revocación SSO', error); }
     }
     await accounts.delete(userId);
+    olvidarSesion(c.get('sessionId'));                                          // deja de valer al tiro (no espera los 60 s del caché)
     return c.body(null, 204);
   });
 

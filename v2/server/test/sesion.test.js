@@ -102,11 +102,11 @@ test('eliminar cuenta: revoca «Iniciar sesión con Apple» y deja el teléfono 
   assert.deepEqual([again.status, again.json.isNew], [200, true]);
 });
 
-test('límite de intentos: más de 20 por minuto desde una IP se frenan', { skip }, async (t) => {
+test('límite de intentos: más de 60 por minuto desde una IP se frenan', { skip }, async (t) => {
   const ctx = await setup(t);
   const statuses = [];
-  for (let i = 0; i < 22; i++) statuses.push((await ctx.post('/auth/challenge', {})).status);
-  assert.deepEqual([statuses.slice(0, 20).every((s) => s === 200), statuses[20], statuses[21]], [true, 429, 429]);
+  for (let i = 0; i < 62; i++) statuses.push((await ctx.post('/auth/challenge', {})).status);
+  assert.deepEqual([statuses.slice(0, 60).every((s) => s === 200), statuses[60], statuses[61]], [true, 429, 429]);
   assert.equal((await ctx.post('/auth/challenge', {}, { 'cf-connecting-ip': '198.51.100.9' })).status, 200, 'otra IP no se ve afectada');
   ctx.clock.now += 61_000;
   assert.equal((await ctx.post('/auth/challenge', {})).status, 200);

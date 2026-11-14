@@ -249,3 +249,42 @@ test('arcade no cuenta para misiones ni semana; el tiempo medido se corrige una 
   assert.equal((await ana.call('DELETE', '/account/vip')).status, 204);
   assert.equal((await ana.call('GET', '/state')).json.vip, null);
 });
+
+test('escala: límite por sesión, lecturas sin gastar nonce y estado en una consulta', { skip }, async (t) => {
+  const ctx = await setup(t); noonChile(ctx.clock);
+  const ana = await ctx.newPlayer('Ana');
+  // una lectura repetida tal cual (mismo nonce) se acepta: no cambia nada y no gasta Redis
+  const r1 = await ana.call('GET', '/state');
+  const again = await ctx.app.request('/v2/state', { method: 'GET', headers: r1.sent.headers });
+  assert.equal(again.status, 200);
+  // una escritura repetida, no
+  const w1 = await ana.call('POST', '/streak/claim');
+  const rep = await ctx.app.request('/v2/streak/claim', { method: 'POST', headers: w1.sent.headers, body: w1.sent.body });
+  assert.equal((await rep.json()).error, 'peticion_repetida');
+  // el estado trae los mejores de la semana y del mes
+  await play(ctx, ana, 30);
+  assert.deepEqual((await ana.call('GET', '/state')).json.periodo, { w: 30, m: 30 });
+  // pasado el límite por sesión, 429 (una app modificada no puede martillar la base)
+  let n429 = 0; for (let i = 0; i < 620; i++) if ((await ana.call('GET', '/state')).status === 429) n429++;
+  assert.ok(n429 > 0, 'se frenó');
+  assert.equal((await (await ctx.newPlayer('Beto')).call('GET', '/state')).status, 200, 'los demás jugadores no se ven afectados');
+});
+
+test('mantenimiento: la limpieza borra lo viejo y conserva lo que importa; ritmo imposible queda marcado', { skip }, async (t) => {
+  const ctx = await setup(t); noonChile(ctx.clock);
+  const ana = await ctx.newPlayer('Ana');
+  // una partida al ritmo máximo físico: se paga, pero queda marcada
+  const s = (await ana.call('POST', '/matches', { mode: 'classic' })).json; ctx.clock.now += 60_000;
+  assert.equal((await ana.call('POST', `/matches/${s.matchId}/finish`, { hits: E.maxHits(60_000) })).status, 200);
+  const [m] = await ctx.sql`SELECT suspicious FROM matches WHERE id = ${s.matchId}`;
+  assert.equal(m.suspicious, true);
+  await play(ctx, ana, 40);                                                                         // una normal
+  const { GameRepository } = await import('../src/repositories/GameRepository.js');
+  const repo = new GameRepository(ctx.sql);
+  assert.deepEqual(await repo.cleanup(ctx.clock.now), { partidas: 0, sesiones: 0, periodos: 0 }, 'nada viejo todavía');
+  const r = await repo.cleanup(Date.now() + 9 * DAY);                                 // (la sesión de prueba vence con el reloj real)
+  assert.equal(r.partidas, 1, 'se borra la partida normal vieja; la sospechosa se guarda para revisarla');
+  assert.equal(r.sesiones, 1, 'y la sesión vencida hace más de 7 días');
+  const [sc] = await ctx.sql`SELECT best FROM scores WHERE user_id = ${ana.id} AND mode = 'classic'`, [w] = await ctx.sql`SELECT earned FROM wallets WHERE user_id = ${ana.id}`;
+  assert.equal(sc.best, E.maxHits(60_000)); assert.ok(Number(w.earned) > 0, 'los pesos y el récord no se tocan');
+});

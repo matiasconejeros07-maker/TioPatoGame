@@ -25,7 +25,8 @@ import { ChallengeStore, NonceStore, RateLimiter } from './services/stores.js';
 export default {
   async fetch(request, env, ctx) {
     // Hyperdrive mantiene las conexiones a PostgreSQL abiertas cerca del Worker.
-    const sql = postgres(env.HYPERDRIVE.connectionString, { max: 5, fetch_types: false });
+    // statement_timeout: ninguna consulta puede tomar más de 5 s (si la base se pone lenta, se corta en vez de amontonar conexiones)
+    const sql = postgres(env.HYPERDRIVE.connectionString, { max: 5, fetch_types: false, connection: { statement_timeout: 5000 } });
     const redis = new Redis({ url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN });
     const allowSandbox = env.ALLOW_SANDBOX === 'true';
     const google = new GoogleServiceAccount({ clientEmail: env.GOOGLE_CLIENT_EMAIL, privateKey: env.GOOGLE_PRIVATE_KEY });
@@ -40,6 +41,9 @@ export default {
       sessions: new SessionRepository(sql),
       nonces: new NonceStore(redis),
       rateLimiter: new RateLimiter(redis),
+      // límite por sesión: el de Cloudflare (sin costo por uso, no pasa por Redis) si está configurado en wrangler.toml
+      sessionLimiter: env.RATE_LIMITER ? { allow: async (key) => (await env.RATE_LIMITER.limit({ key })).success } : { allow: (key) => new RateLimiter(redis).allow(key, 120, 60) },
+      cacheSessions: true,
       accounts: new AccountRepository(sql),
       matches: new MatchRepository(sql), game: new GameRepository(sql),
       firebaseTokens: new FirebaseTokenVerifier({ projectId: env.FIREBASE_PROJECT_ID }),
@@ -62,5 +66,11 @@ export default {
       googlePushAudience: env.GOOGLE_PUSH_AUDIENCE, googlePushEmail: env.GOOGLE_PUSH_SERVICE_ACCOUNT, packageName: APP_ID,
     });
     try { return await app.fetch(request, env, ctx); } finally { ctx.waitUntil(sql.end()); }
+  },
+
+  // Limpieza diaria (ver [triggers] en wrangler.toml y GameRepository.cleanup).
+  async scheduled(event, env, ctx) {
+    const sql = postgres(env.HYPERDRIVE.connectionString, { max: 1, fetch_types: false, connection: { statement_timeout: 60000 } });
+    try { console.log('limpieza', await new GameRepository(sql).cleanup(Date.now())); } finally { ctx.waitUntil(sql.end()); }
   },
 };

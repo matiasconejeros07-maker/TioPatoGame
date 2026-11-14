@@ -178,11 +178,11 @@ Los archivos exportados tienen correos y datos personales: se guardan solo en tu
 |---|---|---|
 | Cloudflare Workers (servidor + WAF básico) | USD 0 (plan gratis: 100.000 peticiones al día) → recomiendo **USD 5** (Workers Paid) para no quedarte corto | USD 5 + uso |
 | PostgreSQL | Neon: plan gratis para el ensayo; para producción el plan pagado (~USD 5–20 según uso) · Supabase Pro: USD 25 | USD 20–70 |
-| Redis (Upstash) | USD 0 (capa gratis) | ~USD 0,20 por cada 100.000 comandos (pocos dólares al mes) |
+| Redis (Upstash) | **Plan fijo** (desde ~USD 10 al mes, sin cobro por comando). Ojo: con el plan «por uso», 10.000 jugadores activos pueden costar decenas de dólares al día | Plan fijo: USD 10–20 |
 | Firebase (solo para reclamar cuentas) | USD 0 (plan Spark) | USD 0 |
 | AdMob | gratis: **te paga** a ti | — |
 | Página de privacidad (Cloudflare Pages) | USD 0 | USD 0 |
-| **Total aproximado** | **USD 5–30 al mes** | USD 30–100 al mes |
+| **Total aproximado** | **USD 15–40 al mes** | USD 40–110 al mes |
 
 ### Comisiones sobre lo que vendes
 
@@ -193,6 +193,8 @@ Los archivos exportados tienen correos y datos personales: se guardan solo en tu
 ---
 
 ## 6. Lista para que no haya problemas
+
+Ver también la auditoría de escala y seguridad: `docs/08-auditoria.md`.
 
 - [ ] Nombre del paquete definitivo **antes** de la primera subida.
 - [ ] Guardar la **clave de firma** en dos lugares seguros. Con «Firma de apps de Play» Google guarda la de la tienda,

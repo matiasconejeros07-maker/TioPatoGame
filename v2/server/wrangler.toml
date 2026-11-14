@@ -29,3 +29,13 @@ UPSTASH_REDIS_REST_URL = ""
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = ""                                    # wrangler hyperdrive create tiopato --connection-string="postgres://…"
+
+# Límite por sesión de la API (lo aplica Cloudflare en el borde, sin pasar por Redis ni por la base): 120 peticiones por minuto.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 120, period = 60 }
+
+# Limpieza diaria (04:17 UTC): partidas terminadas de hace más de 7 días, sesiones vencidas y marcadores de períodos viejos.
+[triggers]
+crons = ["17 4 * * *"]

@@ -80,8 +80,8 @@ export function instalarNube() {
         const k = n0 === 'weekly' ? 'w' : 'm';
         if (n2 === undefined) return filas((await publico('/leaderboards/' + k)).rows);
         if (n2 !== U) return null;
-        const me = await api.request('GET', `/leaderboards/${k}/me`);
-        return pick(me.s ? { n: s.name, s: me.s, t: 0 } : null, seg.slice(3));
+        const mejor = s.periodo ? s.periodo[k] : 0;                       // viene en el estado (sin consulta aparte)
+        return pick(mejor ? { n: s.name, s: mejor, t: 0 } : null, seg.slice(3));
       }
       default: return null;
     }
@@ -110,8 +110,8 @@ export function instalarNube() {
       const modo = window.V2 && window.V2.mode === 'arcade' ? 'arcade' : 'classic';
       const r = await api.request('POST', '/matches', { mode: modo });
       run = { s: r.s, b: r.ball, r: r.rate, id: r.matchId }; guardarRun();
-      const p = partidas(); p.ids = { ...(p.ids || {}), [r.s]: r.matchId }; guardarPartidas(p);
-      return true;
+      const p = partidas(); p.ids = Object.fromEntries(Object.entries({ ...(p.ids || {}), [r.s]: r.matchId }).slice(-10)); guardarPartidas(p);
+      return 'sin-recarga';                                               // empezar no cambia nada de lo que muestra el juego
     }
     // terminar y cobrar la partida
     if (has(`runs/${U}/e`)) {
@@ -128,7 +128,8 @@ export function instalarNube() {
       const inc = val(`scores/${U}/ms`) - (s.scores.ms || 0);
       await api.request('POST', `/matches/${id}/played`, { playedMs: Math.max(0, inc) });      // el juego suma su medición a lo que ya había; el servidor la usa en vez de su estimación
       const p = partidas(); p.fijas = [...(p.fijas || []), sMl].slice(-5); guardarPartidas(p);
-      return true;
+      st.scores.ms = val(`scores/${U}/ms`);                               // el total que calculó el juego (es el mismo que guarda el servidor)
+      return 'sin-recarga';
     }
     // racha
     if (has(`streaks/${U}/n`)) { await api.request('POST', '/streak/claim'); return true; }
@@ -186,7 +187,7 @@ export function instalarNube() {
       if (method === 'GET') return resp(await leer(seg, u.searchParams));
       const cuerpo = init.body ? JSON.parse(init.body) : null;
       const ok = await escribir(method, seg, cuerpo);
-      await cargar();                                                     // lo que cuenta es lo que dice el servidor
+      if (ok !== 'sin-recarga') await cargar();                           // lo que cuenta es lo que dice el servidor (solo si algo cambió)
       if (!ok) return denegado();
       return u.searchParams.get('print') === 'silent' ? resp(null, 204) : resp(await leer(seg, u.searchParams));
     } catch (e) {

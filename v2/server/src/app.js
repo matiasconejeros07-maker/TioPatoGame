@@ -12,7 +12,7 @@ import { HttpError } from './services/errors.js';
 
 const MAX_BODY_BYTES = 16 * 1024;
 /** Desde dónde se puede llamar a la API: la app (Capacitor en Android e iOS) y la web del Modo Práctica (solo marcadores). */
-export const DEFAULT_ORIGINS = ['https://localhost', 'capacitor://localhost', 'http://localhost'];      // ninguna petición legítima se acerca (las atestaciones pesan ~6 KB)
+export const DEFAULT_ORIGINS = ['https://localhost', 'capacitor://localhost'];      // (en desarrollo se suman otros con webOrigins)      // ninguna petición legítima se acerca (las atestaciones pesan ~6 KB)
 
 export function createApp(deps) {
   const { sessions, nonces, masterSecret, now } = deps;
@@ -45,7 +45,7 @@ export function createApp(deps) {
 
   // Con sesión: toda petición va firmada con HMAC.
   const api = new Hono();
-  api.use(signedRequest({ sessions, nonces, masterSecret, now }));
+  api.use(signedRequest({ sessions, nonces, masterSecret, now, limiter: deps.sessionLimiter, cacheSessions: deps.cacheSessions }));
   api.route('/purchases', purchasesController(deps));
   api.route('/account', accountController(deps));
   api.route('/matches', matchesController(deps));

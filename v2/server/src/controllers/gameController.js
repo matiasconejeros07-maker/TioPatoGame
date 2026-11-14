@@ -62,14 +62,23 @@ export function gameController({ game, now = Date.now }) {
   return router;
 }
 
-/** Marcadores públicos (sin sesión): los ve cualquiera, también el Modo Práctica de la web. Se guardan 30 s en caché. */
-export function publicLeaderboards({ game, now = Date.now }) {
+/**
+ * Marcadores públicos (sin sesión): los ve cualquiera, también el Modo Práctica de la web. Se guardan 30 s en el caché
+ * del borde de Cloudflare (Cache API): con miles de jugadores mirando el marcador, la base recibe ~1 consulta cada 30 s
+ * por centro de datos, no una por jugador.
+ */
+export function publicLeaderboards({ game, now = Date.now, edgeCache = globalThis.caches?.default ?? null }) {
   const router = new Hono();
-  router.get('/hist', async (c) => { c.header('Cache-Control', 'public, max-age=30'); return c.json({ counts: await game.histogram() }); });
-  router.get('/:kind', async (c) => {
-    if (!KINDS.has(c.req.param('kind'))) throw new HttpError(422, 'marcador_invalido');
-    c.header('Cache-Control', 'public, max-age=30');
-    return c.json({ rows: await game.top(c.req.param('kind'), now()) });
-  });
+  const cached = (fn) => async (c) => {
+    const key = new Request(new URL(c.req.path, 'https://cache.tiopato').href);
+    const hit = edgeCache && (await edgeCache.match(key));
+    if (hit) return hit;
+    const res = new Response(JSON.stringify(await fn(c)), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=30' } });
+    if (edgeCache) { const put = edgeCache.put(key, res.clone()); try { c.executionCtx.waitUntil(put); } catch { await put; } }
+    return res;
+  };
+  router.get('/hist', cached(async () => ({ counts: await game.histogram() })));
+  router.get('/:kind', async (c, next) => { if (!KINDS.has(c.req.param('kind'))) throw new HttpError(422, 'marcador_invalido'); return next(); },
+    cached(async (c) => ({ rows: await game.top(c.req.param('kind'), now()) })));
   return router;
 }

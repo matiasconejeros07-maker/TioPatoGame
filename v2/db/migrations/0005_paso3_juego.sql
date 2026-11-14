@@ -8,7 +8,10 @@ ALTER TABLE matches ADD COLUMN mult      integer NOT NULL DEFAULT 1 CHECK (mult 
 ALTER TABLE matches ADD COLUMN hits      integer CHECK (hits BETWEEN 0 AND 500);
 ALTER TABLE matches ADD COLUMN payout    bigint CHECK (payout >= 0);
 ALTER TABLE matches ADD COLUMN played_ms integer CHECK (played_ms >= 0);
-ALTER TABLE matches ADD COLUMN played_fixed boolean NOT NULL DEFAULT false;   -- el juego ya informó lo que midió (se corrige una sola vez)
+ALTER TABLE matches ADD COLUMN played_fixed boolean NOT NULL DEFAULT false;
+-- Antitrampas: partidas con un ritmo de rebotes casi imposible para una persona (para revisarlas; no se bloquean solas).
+ALTER TABLE matches ADD COLUMN suspicious boolean NOT NULL DEFAULT false;
+CREATE INDEX matches_suspicious ON matches(started_at DESC) WHERE suspicious;   -- el juego ya informó lo que midió (se corrige una sola vez)
 CREATE INDEX matches_user ON matches(user_id, started_at DESC);
 
 -- Marcadores: lo que más se consulta es «los mejores de…» y «cuántos me ganan».

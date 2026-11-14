@@ -15,6 +15,18 @@ const at = (sql, ms) => sql`(timestamptz 'epoch' + ${Math.round(ms)} * interval 
 /** timestamptz → ms (columna), como número. */
 const msOf = (sql, col) => sql`(extract(epoch from ${sql(col)}) * 1000)::bigint`;
 const num = (v) => (v === null || v === undefined ? null : Number(v));
+/** Filas de la base → los objetos con los nombres cortos de la V1. */
+function walletFrom(w) {
+  const equipped = Object.fromEntries(E.CATEGORIAS.map((c) => [c, E.defaultItem(c)]));
+  for (const [slot, item] of Object.entries(w?.eq || {})) if (E.CATEGORIAS.includes(slot)) equipped[slot] = item;
+  return { c: num(w?.earned) ?? 0, sp: num(w?.spent) ?? 0, lr: num(w?.lr) ?? 0, own: Object.fromEntries((w?.own || []).map((i) => [i, true])), eq: equipped };
+}
+function streakFrom(k) {
+  if (!k) return null;
+  return { n: k.days, t: num(k.t) ?? 0, x2: k.streak_x2, x3: k.streak_x3, x4: k.streak_x4, y2: k.wheel_x2, y3: k.wheel_x3, y4: k.wheel_x4,
+    ...(k.bx ? { bx: num(k.bx), bm: k.boost_mult ?? 2, bd: k.boost_ms ?? E.ECO.racha.dobleMs } : {}) };
+}
+const statsFrom = (s) => (s ? { ...s.periods, g: num(s.games), r: num(s.bounces) } : null);
 
 export class GameRepository {
   /** @param {import('postgres').Sql} sql */
@@ -22,58 +34,65 @@ export class GameRepository {
 
   // ───────────────────────── lectura ─────────────────────────
 
-  /** Todo lo que el juego necesita al abrir: cuenta, cartera, racha, misiones, ruleta, récords y lo de la V2. */
+  /**
+   * Todo lo que el juego necesita al abrir: cuenta, cartera, racha, misiones, ruleta, récords, lo de la V2 y tus mejores
+   * de la semana y del mes. UNA sola consulta (el juego lo pide al abrir y después de cada acción: con miles de jugadores
+   * cada viaje a la base cuenta).
+   */
   async state(userId, now) {
-    const sql = this.sql;
+    const sql = this.sql, day = E.dayOf(now), ms = (col) => sql`(extract(epoch from ${sql.unsafe(col)}) * 1000)::bigint`;
     const [u] = await sql`
-      SELECT id, display_name, name_key, avatar, golden_frame, role, played_ms, ${msOf(sql, 'name_changed_at')} AS nc,
-             EXISTS (SELECT 1 FROM identities i WHERE i.user_id = users.id) AS sso
-      FROM users WHERE id = ${userId}`;
+      SELECT u.id, u.display_name, u.name_key, u.avatar, u.golden_frame, u.role, u.played_ms, ${ms('u.name_changed_at')} AS nc,
+        EXISTS (SELECT 1 FROM identities i WHERE i.user_id = u.id) AS sso,
+        w.earned, w.spent,
+        (SELECT coalesce(json_agg(item_id), '[]'::json) FROM inventory WHERE user_id = u.id) AS own,
+        (SELECT coalesce(json_object_agg(slot, item_id), '{}'::json) FROM equipped WHERE user_id = u.id) AS eq,
+        (SELECT ${ms('started_at')} FROM matches WHERE user_id = u.id AND hits IS NOT NULL ORDER BY started_at DESC LIMIT 1) AS lr,
+        (SELECT row_to_json(k) FROM (SELECT days, ${ms('last_claim_at')} AS t, streak_x2, streak_x3, streak_x4, wheel_x2, wheel_x3, wheel_x4,
+           ${ms('boost_started_at')} AS bx, boost_mult, boost_ms FROM streaks WHERE user_id = u.id) k) AS streak,
+        (SELECT row_to_json(x) FROM (SELECT games, bounces, periods FROM stats WHERE user_id = u.id) x) AS stats,
+        (SELECT coalesce(json_agg(achievement_id), '[]'::json) FROM achievements WHERE user_id = u.id) AS missions,
+        (SELECT row_to_json(r) FROM (SELECT ${ms('last_spin_at')} AS t, ${ms('claimed_spin')} AS c FROM wheel WHERE user_id = u.id) r) AS wheel,
+        (SELECT coalesce(json_object_agg(mode, json_build_object('s', best, 't', ${ms('best_at')})), '{}'::json) FROM scores WHERE user_id = u.id) AS scores,
+        (SELECT coalesce(json_object_agg(powerup_id, quantity), '{}'::json) FROM powerup_inventory WHERE user_id = u.id) AS pu,
+        EXISTS (SELECT 1 FROM entitlements WHERE user_id = u.id AND entitlement_id = 'no_ads') AS na,
+        (SELECT row_to_json(v) FROM (SELECT whatsapp AS w, consent AS c, ${ms('left_at')} AS t FROM vip_contacts WHERE user_id = u.id) v) AS vip,
+        (SELECT best FROM period_scores WHERE mode = 'classic' AND kind = 'w' AND period = ${E.weekOf(day)} AND user_id = u.id) AS wk,
+        (SELECT best FROM period_scores WHERE mode = 'classic' AND kind = 'm' AND period = ${E.monthOf(day)} AND user_id = u.id) AS mo
+      FROM users u LEFT JOIN wallets w ON w.user_id = u.id WHERE u.id = ${userId}`;
     if (!u) throw new HttpError(401, 'sesion_invalida');
-    const [wallet, streak, stats, missions, wheel, scores, powerups, entitlements, vip] = await Promise.all([
-      this.#wallet(sql, userId), this.#streak(sql, userId), this.#stats(sql, userId),
-      sql`SELECT achievement_id FROM achievements WHERE user_id = ${userId}`,
-      sql`SELECT ${msOf(sql, 'last_spin_at')} AS t, ${msOf(sql, 'claimed_spin')} AS c FROM wheel WHERE user_id = ${userId}`,
-      sql`SELECT mode, best, ${msOf(sql, 'best_at')} AS t FROM scores WHERE user_id = ${userId}`,
-      sql`SELECT powerup_id, quantity FROM powerup_inventory WHERE user_id = ${userId}`,
-      sql`SELECT entitlement_id FROM entitlements WHERE user_id = ${userId}`,
-      sql`SELECT whatsapp, consent, ${msOf(sql, 'left_at')} AS t FROM vip_contacts WHERE user_id = ${userId}`,
-    ]);
-    const best = (mode) => scores.find((s) => s.mode === mode);
-    const secret = wallet.own[`ch_${E.SECRET_ID}`];
+    const wallet = walletFrom(u), sc = u.scores || {};
     return {
       now, uid: u.id, name: u.display_name, key: u.name_key, role: u.role, av: u.avatar, marco: u.golden_frame, sso: u.sso,
-      wallet, streak, stats, missions: Object.fromEntries(missions.map((m) => [m.achievement_id, true])),
-      ruleta: wheel[0]?.t ? { t: num(wheel[0].t), ...(wheel[0].c ? { c: num(wheel[0].c) } : {}) } : null,
-      scores: { s: best('classic')?.best ?? 0, t: num(best('classic')?.t), ms: num(u.played_ms) },
-      arcade: { s: best('arcade')?.best ?? 0 },
-      v2: { pu: Object.fromEntries(powerups.map((p) => [p.powerup_id, Math.max(0, p.quantity)])), na: entitlements.some((e) => e.entitlement_id === 'no_ads'), nc: num(u.nc) },
-      vip: vip[0] ? { w: vip[0].whatsapp, c: vip[0].consent, t: num(vip[0].t) } : null,
-      compradores: secret ? { n: u.display_name } : null,
+      wallet, streak: streakFrom(u.streak), stats: statsFrom(u.stats), missions: Object.fromEntries((u.missions || []).map((m) => [m, true])),
+      ruleta: u.wheel?.t ? { t: num(u.wheel.t), ...(u.wheel.c ? { c: num(u.wheel.c) } : {}) } : null,
+      scores: { s: sc.classic?.s ?? 0, t: num(sc.classic?.t), ms: num(u.played_ms) },
+      arcade: { s: sc.arcade?.s ?? 0 },
+      periodo: { w: u.wk ?? 0, m: u.mo ?? 0 },
+      v2: { pu: Object.fromEntries(Object.entries(u.pu || {}).map(([k, q]) => [k, Math.max(0, q)])), na: u.na, nc: num(u.nc) },
+      vip: u.vip ? { w: u.vip.w, c: u.vip.c, t: num(u.vip.t) } : null,
+      compradores: wallet.own[`ch_${E.SECRET_ID}`] ? { n: u.display_name } : null,
     };
   }
 
   async #wallet(sql, userId) {
-    const [w] = await sql`SELECT earned, spent FROM wallets WHERE user_id = ${userId}`;
-    const own = await sql`SELECT item_id FROM inventory WHERE user_id = ${userId}`;
-    const eq = await sql`SELECT slot, item_id FROM equipped WHERE user_id = ${userId}`;
-    const [lr] = await sql`SELECT ${msOf(sql, 'started_at')} AS s FROM matches WHERE user_id = ${userId} AND hits IS NOT NULL ORDER BY started_at DESC LIMIT 1`;
-    const equipped = Object.fromEntries(E.CATEGORIAS.map((c) => [c, E.defaultItem(c)]));
-    for (const e of eq) if (E.CATEGORIAS.includes(e.slot)) equipped[e.slot] = e.item_id;
-    return { c: num(w?.earned) ?? 0, sp: num(w?.spent) ?? 0, lr: num(lr?.s) ?? 0, own: Object.fromEntries(own.map((i) => [i.item_id, true])), eq: equipped };
+    const [w] = await sql`
+      SELECT (SELECT earned FROM wallets WHERE user_id = ${userId}) AS earned, (SELECT spent FROM wallets WHERE user_id = ${userId}) AS spent,
+        (SELECT coalesce(json_agg(item_id), '[]'::json) FROM inventory WHERE user_id = ${userId}) AS own,
+        (SELECT coalesce(json_object_agg(slot, item_id), '{}'::json) FROM equipped WHERE user_id = ${userId}) AS eq,
+        (SELECT ${msOf(sql, 'started_at')} FROM matches WHERE user_id = ${userId} AND hits IS NOT NULL ORDER BY started_at DESC LIMIT 1) AS lr`;
+    return walletFrom(w);
   }
   async #streak(sql, userId) {
     const [k] = await sql`
       SELECT days, ${msOf(sql, 'last_claim_at')} AS t, streak_x2, streak_x3, streak_x4, wheel_x2, wheel_x3, wheel_x4,
              ${msOf(sql, 'boost_started_at')} AS bx, boost_mult, boost_ms
       FROM streaks WHERE user_id = ${userId}`;
-    if (!k) return null;
-    return { n: k.days, t: num(k.t) ?? 0, x2: k.streak_x2, x3: k.streak_x3, x4: k.streak_x4, y2: k.wheel_x2, y3: k.wheel_x3, y4: k.wheel_x4,
-      ...(k.bx ? { bx: num(k.bx), bm: k.boost_mult ?? 2, bd: k.boost_ms ?? E.ECO.racha.dobleMs } : {}) };
+    return streakFrom(k);
   }
   async #stats(sql, userId) {
     const [s] = await sql`SELECT games, bounces, periods FROM stats WHERE user_id = ${userId}`;
-    return s ? { ...s.periods, g: num(s.games), r: num(s.bounces) } : null;
+    return statsFrom(s);
   }
 
   /** Bloquea la cartera de la cuenta (la crea si no existe) para mover pesos sin carreras. */
@@ -152,7 +171,9 @@ export class GameRepository {
           INSERT INTO period_scores (mode, kind, period, user_id, best) VALUES (${m.mode}, ${kind}, ${period}, ${userId}, ${hits})
           ON CONFLICT (mode, kind, period, user_id) DO UPDATE SET best = GREATEST(period_scores.best, EXCLUDED.best)`;
       }
-      await tx`UPDATE matches SET ended_at = ${at(tx, now)}, hits = ${hits}, payout = ${pesos}, played_ms = ${inc} WHERE id = ${matchId}`;
+      // ¿ritmo casi imposible? (más del 90 % del máximo físico en una partida larga): se marca para revisión, se paga igual
+      const suspicious = hits >= 60 && hits > 0.9 * E.maxHits(elapsed);
+      await tx`UPDATE matches SET ended_at = ${at(tx, now)}, hits = ${hits}, payout = ${pesos}, played_ms = ${inc}, suspicious = ${suspicious} WHERE id = ${matchId}`;
       return { already: false, ...(await this.#afterMatch(tx, userId, m.mode)), pesos, mult: m.mult, hits, record, playedInc: inc };
     });
   }
@@ -349,6 +370,28 @@ export class GameRepository {
     }
     await this.sql`UPDATE users SET golden_frame = ${!!on} WHERE id = ${userId}`;
     return { marco: !!on };
+  }
+
+  // ───────────────────────── mantenimiento ─────────────────────────
+
+  /**
+   * Limpieza diaria (cron del Worker), de a lotes para no bloquear la base en horas de juego:
+   *  · partidas terminadas de hace más de 7 días (con 10.000 jugadores son ~500.000 filas por día;
+   *    los pesos, récords y estadísticas ya quedaron en sus tablas) — se conservan las marcadas como sospechosas;
+   *  · sesiones vencidas o revocadas hace más de 7 días;
+   *  · marcadores semanales y mensuales de hace más de 13 meses.
+   */
+  async cleanup(now, lote = 5000) {
+    const sql = this.sql, borrados = { partidas: 0, sesiones: 0, periodos: 0 };
+    const hace = (dias) => at(sql, now - dias * 86_400_000);
+    for (let i = 0; i < 40; i++) {
+      const r = await sql`DELETE FROM matches WHERE id IN (SELECT id FROM matches WHERE ended_at < ${hace(7)} AND NOT suspicious LIMIT ${lote})`;
+      borrados.partidas += r.count; if (r.count < lote) break;
+    }
+    borrados.sesiones = (await sql`DELETE FROM sessions WHERE expires_at < ${hace(7)} OR revoked_at < ${hace(7)}`).count;
+    const day = E.dayOf(now);
+    borrados.periodos = (await sql`DELETE FROM period_scores WHERE (kind = 'w' AND period < ${E.weekOf(day) - 57}) OR (kind = 'm' AND period < ${E.monthOf(day - 400)})`).count;
+    return borrados;
   }
 
   // ───────────────────────── marcadores ─────────────────────────
