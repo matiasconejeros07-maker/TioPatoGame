@@ -3366,6 +3366,12 @@
     const on = MIS_ON(), n = on ? readyCount() : 0, b = $('missBadge');
     $('openMiss').hidden = !on; b.hidden = n === 0; b.textContent = n;
     $('tabD').hidden = $('tabW').hidden = $('tabA').hidden = !on; $('dTabs').hidden = !(on && streakOk);
+    // V2: punto rojo en cada pestaña con algo por reclamar (racha, hoy, semana, logros; la ruleta ya lo tenía)
+    const ms = on ? missionState() : null, sOn = AUTH && !!session && streakOk;
+    $('tabS').classList.toggle('dot', !!(sOn && streakInfo().claimable));
+    $('tabD').classList.toggle('dot', !!(ms && ms.dia.some(x => x.lista)));
+    $('tabW').classList.toggle('dot', !!(ms && ms.sem.some(x => x.lista)));
+    $('tabA').classList.toggle('dot', !!(ms && ms.logros.some(x => x.lista)));
   }
   async function pullMissions() {                                              // estadísticas y logros cobrados, tal como los guarda el servidor
     if (!AUTH || !session || !MIS) { statsOk = false; return false; }

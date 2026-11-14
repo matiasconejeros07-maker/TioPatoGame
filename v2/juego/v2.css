@@ -202,3 +202,18 @@
   #menu .btn.arcade:active { transform: translateY(4px); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 2px 0 #250760; }
   #menu .btn.arcade b { position: absolute; top: -8px; right: -8px; min-width: 24px; padding: 2px 6px; border-radius: 999px; font-size: 12px; color: #3a2600; background: linear-gradient(180deg, #fff3b0, #ffc928); box-shadow: 0 0 0 2px #fff, 0 2px 6px rgba(0,0,0,.3); }
   #menu .btn.arcade b[hidden] { display: none; }
+
+  /* App de celular: nada de barras de desplazamiento visibles (se sigue pudiendo deslizar con el dedo) */
+  * { scrollbar-width: none; } *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  html, body { overscroll-behavior: none; }
+  /* Ajustes (y correo, VIP): la tarjeta cabe en la pantalla y su contenido se desliza */
+  .modal { overflow: hidden; }
+  .mcard.set { display: flex; flex-direction: column; max-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
+  .mcard.set .sethead { flex: none; }
+  .mcard.set .setbody { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .mcard.set .setx { z-index: 4; }
+  .mcard { overscroll-behavior: contain; }
+  /* puntos rojos: en las pestañas de premios y en el contador de Misiones */
+  .seg.dtabs button { position: relative; }
+  .seg.dtabs button.dot::after { width: 12px; height: 12px; top: 2px; right: 6px; box-shadow: 0 0 8px rgba(229, 40, 28, .8); animation: v2pulse 1.3s ease-in-out infinite; }
+  .mbadge2 { background: #e5281c; box-shadow: 0 0 0 2px #fff, 0 0 10px rgba(229, 40, 28, .6); animation: v2pulse 1.3s ease-in-out infinite; }
