@@ -6,6 +6,18 @@ const ESTILOS = {
   agujero: { n: 70, tipo: 'espiral', col: ['#ffb36b', '#ff6b3d', '#ffe2b8', '#ffffff'], r: [.8, 2.2], glow: 8 },
 };
 const azar = (a, b) => a + Math.random() * (b - a);
+// Punto de luz con su halo ya pintado (en caché por color). Reemplaza a shadowBlur, que desenfoca en tiempo real cada
+// partícula y era lo más caro de esta capa.
+const halos = new Map();
+function halo(color, glow) {
+  const k = color + glow; let c = halos.get(k);
+  if (!c) {
+    const n = 64; c = document.createElement('canvas'); c.width = c.height = n; const g = c.getContext('2d');
+    const r = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2); r.addColorStop(0, color); r.addColorStop(.18, color); r.addColorStop(.32, color + '88'); r.addColorStop(1, color + '00');
+    g.fillStyle = r; g.fillRect(0, 0, n, n); halos.set(k, c);
+  }
+  return c;
+}
 
 export class Ambiente {
   #cv; #ctx; #p = []; #fondo = ''; #raf = 0; #ultimo = 0; #w = 0; #h = 0; #fugaces = [];
@@ -33,7 +45,7 @@ export class Ambiente {
   }
 
   #medir() {
-    const ratio = Math.min(2, devicePixelRatio || 1);
+    const ratio = Math.min(1.5, devicePixelRatio || 1);                       // partículas de luz suaves: no necesitan más
     this.#w = innerWidth; this.#h = innerHeight;
     this.#cv.width = this.#w * ratio; this.#cv.height = this.#h * ratio; this.#ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   }
@@ -65,6 +77,7 @@ export class Ambiente {
       }
       const parpadeo = e.tipo === 'estrella' || e.tipo === 'destello' || e.tipo === 'luciernaga' ? .35 + .65 * Math.abs(Math.sin(s * p.vel * 1.4 + p.fase)) : 1;
       g.globalAlpha = parpadeo * (e.tipo === 'burbuja' ? .55 : .9);
+      if (e.tipo === 'chispa' || e.tipo === 'espiral') { const R = p.r + e.glow * .55; g.drawImage(halo(p.c, e.glow), p.x - R, p.y - R, R * 2, R * 2); continue; }
       g.shadowBlur = e.glow; g.shadowColor = p.c;
       if (e.tipo === 'burbuja') {
         g.strokeStyle = p.c; g.lineWidth = 1.4; g.beginPath(); g.arc(p.x, p.y, p.r, 0, 7); g.stroke();

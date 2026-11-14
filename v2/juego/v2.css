@@ -230,7 +230,7 @@ body #paddle.p-fuego, body .pvbar.p-fuego {
   box-shadow: 0 0 10px rgba(255,120,30,.9), 0 0 26px rgba(255,80,10,.55), 0 -6px 22px rgba(255,140,30,.35), inset 0 1px 0 rgba(255,210,170,.35), inset 0 -2px 4px rgba(255,90,10,.7);
   animation: lavaPulso 1.3s ease-in-out infinite alternate;
 }
-body #paddle.p-fuego::before, body .pvbar.p-fuego::before { inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='16' viewBox='0 0 60 16'%3E%3Cpath d='M0 9 L7 7 L11 10 L17 5 L22 8 L26 3 L31 9 L37 7 L41 11 L46 6 L52 9 L56 4 L60 8' fill='none' stroke='%23fff6c8' stroke-width='.6'/%3E%3C/svg%3E") 0 50% / auto 100% repeat-x; filter: drop-shadow(0 0 2px #ff9a1c); animation: lavaGrieta .9s ease-in-out infinite alternate; }
+body #paddle.p-fuego::before, body .pvbar.p-fuego::before { inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='16' viewBox='0 0 60 16'%3E%3Cpath d='M0 9 L7 7 L11 10 L17 5 L22 8 L26 3 L31 9 L37 7 L41 11 L46 6 L52 9 L56 4 L60 8' fill='none' stroke='%23ff9a1c' stroke-opacity='.45' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M0 9 L7 7 L11 10 L17 5 L22 8 L26 3 L31 9 L37 7 L41 11 L46 6 L52 9 L56 4 L60 8' fill='none' stroke='%23fff6c8' stroke-width='.6'/%3E%3C/svg%3E") 0 50% / auto 100% repeat-x; will-change: opacity; animation: lavaGrieta .9s ease-in-out infinite alternate; }
 body #paddle.p-fuego::after, body .pvbar.p-fuego::after { inset: 0; border-radius: inherit; background: linear-gradient(90deg, transparent, rgba(255,170,60,.55), transparent) 0 0 / 40% 100% no-repeat; mix-blend-mode: screen; animation: lavaFluye 2.6s linear infinite; }
 @keyframes lavaPulso { from { filter: brightness(.92) saturate(1); } to { filter: brightness(1.12) saturate(1.25); } }
 @keyframes lavaGrieta { from { opacity: .35; } to { opacity: 1; } }
@@ -245,9 +245,9 @@ body #paddle.p-plasma, body .pvbar.p-plasma {
   box-shadow: 0 0 8px #4fe6ff, 0 0 22px rgba(122,92,255,.8), 0 0 48px rgba(60,180,255,.3), inset 0 0 6px rgba(80,220,255,.6), inset 0 -2px 3px rgba(0,0,0,.6);
   animation: tormentaLuz .7s steps(3) infinite;
 }
-body #paddle.p-plasma::before, body .pvbar.p-plasma::before { inset: 0 6%; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='16' viewBox='0 0 40 16'%3E%3Cpath d='M0 8 L4 5 L7 10 L11 4 L14 11 L18 6 L21 9 L25 3 L28 12 L32 6 L36 9 L40 8' fill='none' stroke='%23e8fdff' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") 0 50% / auto 100% repeat-x; filter: drop-shadow(0 0 2px #5ff0ff) drop-shadow(0 0 3px #8f7aff); animation: tormentaFil .18s steps(1) infinite; }
+body #paddle.p-plasma::before, body .pvbar.p-plasma::before { inset: 0 6%; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='16' viewBox='0 0 40 16'%3E%3Cpath d='M0 8 L4 5 L7 10 L11 4 L14 11 L18 6 L21 9 L25 3 L28 12 L32 6 L36 9 L40 8' fill='none' stroke='%238f7aff' stroke-opacity='.55' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M0 8 L4 5 L7 10 L11 4 L14 11 L18 6 L21 9 L25 3 L28 12 L32 6 L36 9 L40 8' fill='none' stroke='%235ff0ff' stroke-opacity='.8' stroke-width='2.2' stroke-linejoin='round'/%3E%3Cpath d='M0 8 L4 5 L7 10 L11 4 L14 11 L18 6 L21 9 L25 3 L28 12 L32 6 L36 9 L40 8' fill='none' stroke='%23e8fdff' stroke-width='1' stroke-linejoin='round'/%3E%3C/svg%3E") 0 50% / auto 100% repeat-x; will-change: transform; animation: tormentaFil .18s steps(1) infinite; }
 body #paddle.p-plasma::after, body .pvbar.p-plasma::after { left: 0; right: 0; top: 0; height: 40%; border-radius: 999px 999px 40% 40%; background: linear-gradient(rgba(255,255,255,.45), rgba(255,255,255,0)); }
-@keyframes tormentaFil { 0% { background-position: 0 50%; transform: scaleY(1); } 25% { background-position: -13px 50%; transform: scaleY(-1); } 50% { background-position: -27px 50%; transform: scaleY(.7); } 75% { background-position: -7px 50%; transform: scaleY(-1.2); } }
+@keyframes tormentaFil { 0% { transform: translateX(0) scaleY(1); } 25% { transform: translateX(-3%) scaleY(-1); } 50% { transform: translateX(2%) scaleY(.7); } 75% { transform: translateX(-1%) scaleY(-1.2); } }
 @keyframes tormentaLuz { 0% { filter: brightness(1); } 33% { filter: brightness(1.35); } 66% { filter: brightness(.9); } }
 
 /* Núcleo radiactivo: tapas metálicas con franjas de peligro y un cilindro de vidrio con plutonio verde burbujeante */
@@ -295,3 +295,13 @@ body #paddle.p-midas::before, body .pvbar.p-midas::before { inset: 1px 0; backgr
 .bgx > canvas.v2bg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; z-index: 0; }
 .bgx[data-bg="atardecer"] > i, .bgx[data-bg="cristal"] > i, .bgx[data-bg="aurora"] > i, .bgx[data-bg="galaxia"] > i, .bgx[data-bg="holo"] > i, .bgx[data-bg="boveda"] > i, .bgx[data-bg="prisma"] > i { display: none !important; }
 .bgx[data-bg="atardecer"]::before, .bgx[data-bg="cristal"]::before, .bgx[data-bg="aurora"]::before, .bgx[data-bg="galaxia"]::before, .bgx[data-bg="holo"]::before, .bgx[data-bg="boveda"]::before, .bgx[data-bg="prisma"]::before, .bgx[data-bg="atardecer"]::after, .bgx[data-bg="cristal"]::after, .bgx[data-bg="aurora"]::after, .bgx[data-bg="galaxia"]::after, .bgx[data-bg="holo"]::after, .bgx[data-bg="boveda"]::after, .bgx[data-bg="prisma"]::after { content: none !important; }
+
+/* ---------- rendimiento en la partida ----------
+   En la cancha la barra se redibuja junto con el juego: aquí nada de animar filter ni box-shadow (obligan a repintar
+   la barra y su resplandor en cada cuadro). El latido y los destellos los hace el canvas de efectos; en el cuerpo
+   solo quedan animaciones de opacidad y movimiento sobre capas propias, que mueve la tarjeta gráfica sin repintar.
+   Las vistas previas de la tienda siguen con todas sus animaciones. */
+body #paddle.p-fuego, body #paddle.p-plasma, body #paddle.p-nuclear, body #paddle.p-neon { animation: none; }
+body #paddle.p-neon { box-shadow: 0 0 8px #ff2bd6, 0 0 22px rgba(255,43,214,.75), 0 0 46px rgba(122,92,255,.45); }
+body #paddle.p-fuego::after, body #paddle.p-nuclear::before { animation: none; }
+#paddle::before, #paddle::after { will-change: transform, opacity; }

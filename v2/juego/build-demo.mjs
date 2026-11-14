@@ -11,6 +11,9 @@ const scriptTag = (code) => `<script>\n${code.replace(/<\/script/gi, '<\\/script
 // v2.js: los módulos de la V2 empaquetados en un solo script (también es el archivo que se publica junto a index.html)
 const { outputFiles: [v2] } = await build({ entryPoints: [new URL('v2/main.js', here).pathname], bundle: true, format: 'iife', minify: true, target: 'es2020', write: false });
 writeFileSync(new URL('v2.js', here), '// Generado por build-demo.mjs desde v2/*.js: no editar a mano.\n' + v2.text);
+// fondos-worker.js: el worker que dibuja los fondos premium en otro hilo (se publica junto a index.html; la demo lo lleva adentro)
+const { outputFiles: [fw] } = await build({ entryPoints: [new URL('v2/fondos-worker.js', here).pathname], bundle: true, format: 'iife', minify: true, target: 'es2020', write: false });
+writeFileSync(new URL('fondos-worker.js', here), '// Generado por build-demo.mjs desde v2/fondos-worker.js: no editar a mano.\n' + fw.text);
 let html = read('index.html');
 const head = html.slice(0, html.indexOf('<body')), body = html.slice(html.indexOf('<body'));
 // del <head> solo sirven el título y los estilos (la CSP, el manifiesto y los íconos son de la versión publicada)
@@ -21,7 +24,7 @@ page = page
   .replace('<script src="config.js"></script>', scriptTag(read('demo/firebase-local.js')) + '\n' + scriptTag(read('demo/config.js')))
   .replace('<script src="tienda.js"></script>', scriptTag(read('tienda.js')))
   .replace('<script src="dialogos.js"></script>', scriptTag(read('dialogos.js')))
-  .replace('<script src="v2.js"></script>', scriptTag(v2.text))
+  .replace('<script src="v2.js"></script>', scriptTag('window.__V2_FONDOS_WORKER = ' + JSON.stringify(fw.text) + ';') + '\n' + scriptTag(v2.text))
   .replace(/if \('serviceWorker' in navigator[^\n]*\n[^\n]*\n/, '');                  // la demo no instala nada
 const out = `<title>Gánale al Tío Pato</title>
 <meta name="claude:viewport-fit-sides" content="cover">

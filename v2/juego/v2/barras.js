@@ -8,6 +8,21 @@ function sprite(clave, tam, pintar) { let s = cache.get(clave); if (!s) { s = do
 /** Bola de luz: centro de un color, borde transparente. */
 const luz = (c0, c1 = c0, tam = 64) => sprite(`luz${c0}${c1}`, tam, (g, n) => { const r = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2); r.addColorStop(0, c0); r.addColorStop(.4, c1); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, n, n); });
 const pinta = (g, img, x, y, s, a) => { g.globalAlpha = a; g.drawImage(img, x - s / 2, y - s / 2, s, s); };
+/** Aura de la barra: el halo achatado (una elipse pegada a la barra). Antes era un cuadrado del ancho de la barra: ~3× más píxeles. */
+const aura = (g, img, cx, cy, ancho, alto, a) => { g.globalAlpha = a; g.drawImage(img, cx - ancho / 2, cy - alto / 2, ancho, alto); };
+/** Tono redondeado a 12°: los halos de color se guardan en caché por color y así se reusan (no se crea uno nuevo por cuadro). */
+const tono = (h) => Math.round(((h % 360) + 360) % 360 / 12) * 12;
+/**
+ * Calidad automática de cada barra (1 = completa). Cada barra mira su propio ritmo de cuadros: si el teléfono no da abasto
+ * (promedio bajo ~54 cuadros por segundo, sostenido), baja la cantidad de partículas y luces; si sobra, de a poco la recupera.
+ */
+function calidad(st, dt) {
+  const ms = dt * 1000; if (st.q == null) { st.q = 1; st.ema = 16.7; st.malos = 0; st.buenos = 0; }
+  st.ema = st.ema * .9 + Math.min(ms, 80) * .1;
+  if (st.ema > 18.5) { st.buenos = 0; if (++st.malos > 24) { st.q = Math.max(.3, st.q - .2); st.malos = 0; st.ema = 17; } }
+  else if (st.ema < 17.8) { st.malos = 0; if (++st.buenos > 300 && st.q < 1) { st.q = Math.min(1, st.q + .1); st.buenos = 0; } }
+  return st.q;
+}
 const modo = (g, oscuro) => { g.globalCompositeOperation = oscuro ? 'lighter' : 'source-over'; };
 const lista = (st, k) => st[k] || (st[k] = []);
 function avanzar(arr, dt, fn) { for (let i = arr.length - 1; i >= 0; i--) { const p = arr[i]; p.vida -= dt / p.dura; if (p.vida <= 0) { arr.splice(i, 1); continue; } fn(p, i); } }
@@ -45,29 +60,37 @@ const CAPAS_FUEGO = [
   { ancho: .38, alto: .42, c: ['rgba(255,255,225,1)', 'rgba(255,230,110,.9)', 'rgba(255,170,40,0)'] },
 ];
 const ruido = (x) => Math.sin(x) * .5 + Math.sin(x * 2.31 + 1.3) * .3 + Math.sin(x * 4.7 + 2.1) * .2;
-function lengua(g, x, base, ancho, alto, dobla, c) {
+/** Lengua de fuego prearmada por capa y por curvatura (7 curvaturas): cada cuadro elige la más cercana y la dibuja
+ *  derecha, solo escalada. (Inclinarla con una transformación obligaba a un muestreo mucho más lento.) */
+const CURVAS = 7, LW = 96, LH = 64;
+const lenguaSprite = (c, k) => sprite('lengua' + c.join() + k, LW, (g) => {
+  const dobla = (k / (CURVAS - 1) - .5) * 2 * LW * .3, x = LW / 2, base = LH, ancho = LW * .56, alto = LH;
+  g.clearRect(0, 0, LW, LW);
   g.beginPath(); g.moveTo(x - ancho / 2, base);
-  g.bezierCurveTo(x - ancho * .62, base - alto * .35, x - ancho * .2 + dobla * .35, base - alto * .62, x + dobla, base - alto);
-  g.bezierCurveTo(x + ancho * .22 + dobla * .45, base - alto * .58, x + ancho * .62, base - alto * .32, x + ancho / 2, base);
-  g.closePath();
-  const gr = g.createLinearGradient(0, base, 0, base - alto); gr.addColorStop(0, c[0]); gr.addColorStop(.5, c[1]); gr.addColorStop(1, c[2]);
-  g.fillStyle = gr; g.fill();
+  g.bezierCurveTo(x - ancho * .62, base - alto * .35, x - ancho * .2 + dobla * .35, base - alto * .62, x + dobla, 0);
+  g.bezierCurveTo(x + ancho * .22 + dobla * .45, base - alto * .58, x + ancho * .62, base - alto * .32, x + ancho / 2, base); g.closePath();
+  const gr = g.createLinearGradient(0, base, 0, 0); gr.addColorStop(0, c[0]); gr.addColorStop(.5, c[1]); gr.addColorStop(1, c[2]); g.fillStyle = gr; g.fill();
+});
+function lengua(g, x, base, ancho, alto, dobla, c) {
+  if (alto < .5 || ancho < .5) return;
+  const sx = ancho / (LW * .56), k = Math.max(0, Math.min(CURVAS - 1, Math.round((dobla / sx / (LW * .3) / 2 + .5) * (CURVAS - 1))));
+  g.drawImage(lenguaSprite(c, k), 0, 0, LW, LH, x - LW / 2 * sx, base - alto, LW * sx, alto);
 }
 const llamarada = {
   cols: ['#fff3a0', '#ffb020', '#ff5a12'], ring: '#ff7a1f', rate: 0,
   draw(g, st, L, T, w, h, t, oscuro, dt) {
-    const humo = lista(st, 'humo'), brasas = lista(st, 'brasas'), chispas = lista(st, 'llamas'), escala = h / 16;
+    const humo = lista(st, 'humo'), brasas = lista(st, 'brasas'), chispas = lista(st, 'llamas'), escala = h / 16, q = calidad(st, dt);
     const intensidad = 1 + (st.aviva || 0); st.aviva = Math.max(0, (st.aviva || 0) - dt * 1.6);
     // resplandor cálido que respira
     g.globalCompositeOperation = 'source-over';
-    pinta(g, luz('rgba(255,120,30,.5)', 'rgba(255,70,10,.16)'), L + w / 2, T - h * .4, w * 1.4, .5 + .12 * ruido(t * 6));
+    aura(g, luz('rgba(255,120,30,.5)', 'rgba(255,70,10,.16)'), L + w / 2, T - h * .6, w * 1.3, h * 7, .55 + .12 * ruido(t * 6));
     // humo detrás
-    if (R() < dt * 7) humo.push({ x: L + w * (.25 + R() * .5), y: T - h * 3.2, vx: (R() - .5) * 8, vy: -(16 + R() * 12) * escala, vida: 1, dura: 1.8 + R(), s: h * (1.8 + R() * 1.2), f: R() * TAU });
+    if (q > .5 && R() < dt * 7 * q) humo.push({ x: L + w * (.25 + R() * .5), y: T - h * 3.2, vx: (R() - .5) * 8, vy: -(16 + R() * 12) * escala, vida: 1, dura: 1.8 + R(), s: h * (1.8 + R() * 1.2), f: R() * TAU });
     avanzar(humo, dt, (p) => { p.x += (p.vx + Math.sin(t * 1.3 + p.f) * 9) * dt; p.y += p.vy * dt; pinta(g, luz('rgba(60,40,36,.55)', 'rgba(50,38,36,.2)'), p.x, p.y, p.s * (2 - p.vida), Math.sin(p.vida * Math.PI) * .3); });
     // lenguas de fuego
     g.globalAlpha = 1;
-    const n = Math.max(6, Math.round(w / 11)), paso = w / n, base = T + h * .5;
-    for (const capa of CAPAS_FUEGO) {
+    const n = Math.max(5, Math.round(w / 11 * (.55 + .45 * q))), paso = w / n, base = T + h * .5;
+    for (const capa of q < .55 ? CAPAS_FUEGO.slice(1) : CAPAS_FUEGO) {                 // con poca calidad, sin la capa roja de atrás
       for (let i = 0; i < n; i++) {
         const u = (i + .5) / n, centro = 1 - Math.pow(Math.abs(u * 2 - 1), 2) * .55, f = i * 7.13 + capa.alto * 11;
         const vive = .55 + .45 * ruido(t * 8.3 + f);                                       // cada lengua crece y se encoge a su ritmo
@@ -78,13 +101,14 @@ const llamarada = {
       }
     }
     // lenguas sueltas que se desprenden y suben
-    if (R() < dt * 10 * intensidad) chispas.push({ x: L + w * (.15 + R() * .7), y: T - h * (1 + R() * 1.5), vx: (R() - .5) * 14, vy: -(60 + R() * 50) * escala, vida: 1, dura: .5 + R() * .3, s: h * (.35 + R() * .3), f: R() * TAU });
+    if (R() < dt * 10 * intensidad * q) chispas.push({ x: L + w * (.15 + R() * .7), y: T - h * (1 + R() * 1.5), vx: (R() - .5) * 14, vy: -(60 + R() * 50) * escala, vida: 1, dura: .5 + R() * .3, s: h * (.35 + R() * .3), f: R() * TAU });
+    modo(g, true);
     avanzar(chispas, dt, (p) => { g.globalAlpha = Math.min(1, p.vida * 2); p.x += (p.vx + Math.sin(t * 9 + p.f) * 20) * dt; p.y += p.vy * dt; const k = p.vida; lengua(g, p.x, p.y, p.s * k, p.s * 2.4 * k, Math.sin(t * 8 + p.f) * p.s * .4, ['rgba(255,220,90,.95)', 'rgba(255,120,20,.8)', 'rgba(255,60,0,0)']); });
     // brillo caliente en la base
     modo(g, true);
-    for (let i = 0; i < 5; i++) pinta(g, luz('rgba(255,230,140,1)', 'rgba(255,140,30,.4)'), L + w * (.12 + i * .19) + ruido(t * 4 + i) * 4, T + h * .25, h * 2.2, .35);
+    aura(g, luz('rgba(255,230,140,1)', 'rgba(255,140,30,.4)'), L + w / 2 + ruido(t * 4) * 4, T + h * .25, w * 1.05, h * 2.4, .45);   // brillo caliente pegado a la barra
     // brasas con estela
-    if (R() < dt * 14 * intensidad) brasas.push({ x: L + R() * w, y: T - h, vx: (R() - .5) * 40 * escala, vy: -(70 + R() * 120) * escala, vida: 1, dura: .8 + R() * .9, s: .9 + R() * 1.2, f: R() * TAU });
+    if (R() < dt * 14 * intensidad * q) brasas.push({ x: L + R() * w, y: T - h, vx: (R() - .5) * 40 * escala, vy: -(70 + R() * 120) * escala, vida: 1, dura: .8 + R() * .9, s: .9 + R() * 1.2, f: R() * TAU });
     g.lineCap = 'round';
     avanzar(brasas, dt, (p) => {
       p.vy += 25 * dt; p.x += (p.vx + Math.sin(t * 6 + p.f) * 30) * dt; p.y += p.vy * dt;
@@ -117,19 +141,20 @@ function nuevoRayo(st, x, y, L, T, w, h, fuerza = 1) {
 const tormenta = {
   cols: ['#35e8ff', '#7a5cff', '#ffffff'], ring: '#8f7aff', rate: 0,
   draw(g, st, L, T, w, h, t, oscuro, dt) {
+    const q = calidad(st, dt);
     const parpadeo = .55 + .45 * (R() < .12 ? R() : Math.sin(t * 40) * .5 + .5);
     g.globalCompositeOperation = 'source-over';
-    pinta(g, luz('rgba(110,90,255,.6)', 'rgba(60,200,255,.18)'), L + w / 2, T + h / 2, w * 1.25, .5 * parpadeo + .2);
+    aura(g, luz('rgba(110,90,255,.6)', 'rgba(60,200,255,.18)'), L + w / 2, T + h / 2, w * 1.3, h * 5, .5 * parpadeo + .2);
     modo(g, oscuro);
     // arco continuo entre electrodos (se rehace cada pocos cuadros: chisporrotea)
     st.arcoT = (st.arcoT || 0) - dt;
-    if (st.arcoT <= 0 || !st.arco) { st.arcoT = .035 + R() * .05; st.arco = [rayo(L + h * .5, T + h * .5, L + w - h * .5, T + h * .5, h * 1.3, 6), rayo(L + h * .5, T + h * .5, L + w - h * .5, T + h * .5, h * .9, 5)]; }
-    pintaRayo(g, st.arco[0], h, .9, .75); pintaRayo(g, st.arco[1], h, .45, .5);
+    if (st.arcoT <= 0 || !st.arco) { st.arcoT = (.035 + R() * .05) / Math.max(.4, q); st.arco = [rayo(L + h * .5, T + h * .5, L + w - h * .5, T + h * .5, h * 1.3, 6), rayo(L + h * .5, T + h * .5, L + w - h * .5, T + h * .5, h * .9, 5)]; }
+    pintaRayo(g, st.arco[0], h, .9, .75); if (q > .6) pintaRayo(g, st.arco[1], h, .45, .5);
     // electrodos que brillan
     for (const ex of [L + h * .55, L + w - h * .55]) pinta(g, luz('rgba(200,245,255,1)', 'rgba(80,180,255,.5)'), ex, T + h / 2, h * (1.5 + R() * .6), .55);
     // rayos que saltan hacia arriba
     st.prox = (st.prox ?? .2) - dt;
-    if (st.prox <= 0) { st.prox = .12 + R() * .4; nuevoRayo(st, L + w * (.1 + R() * .8), T, L, T, w, h); }
+    if (st.prox <= 0) { st.prox = (.12 + R() * .4) / Math.max(.35, q); nuevoRayo(st, L + w * (.1 + R() * .8), T, L, T, w, h); }
     avanzar(lista(st, 'rayos'), dt, (r) => {
       const a = r.vida > .7 ? 1 : r.vida / .7;
       pinta(g, luz('rgba(200,240,255,1)', 'rgba(120,120,255,.4)'), r.x, r.y, h * 5 * r.f * a, a * .9);
@@ -141,7 +166,7 @@ const tormenta = {
     avanzar(lista(st, 'chispas'), dt, (p) => { p.vy += 520 * dt; p.x += p.vx * dt; p.y += p.vy * dt; g.globalAlpha = p.vida; g.strokeStyle = R() < .5 ? '#ffffff' : '#7fe9ff'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx * .025, p.y - p.vy * .025); g.stroke(); });
     // orbes de plasma que flotan
     const orbes = lista(st, 'orbes');
-    if (orbes.length < 5 && R() < dt * 3) orbes.push({ x: L + R() * w, y: T - h * R(), vx: (R() - .5) * 20, vy: -(8 + R() * 14), vida: 1, dura: 1.5 + R() });
+    if (q > .6 && orbes.length < 5 && R() < dt * 3) orbes.push({ x: L + R() * w, y: T - h * R(), vx: (R() - .5) * 20, vy: -(8 + R() * 14), vida: 1, dura: 1.5 + R() });
     avanzar(orbes, dt, (o) => { o.x += o.vx * dt; o.y += o.vy * dt; pinta(g, luz('rgba(170,230,255,1)', 'rgba(120,90,255,.5)'), o.x, o.y, h * (.8 + .4 * Math.sin(t * 20 + o.x)), o.vida * .8); });
     g.globalCompositeOperation = 'source-over';
     anillos(g, st, dt, h);
@@ -164,15 +189,15 @@ function simboloRadiactivo(g, x, y, r, rot) {
 const nuclear = {
   cols: ['#b6ff3a', '#5dff4a', '#eaffc0'], ring: '#7dff3a', rate: 0,
   draw(g, st, L, T, w, h, t, oscuro, dt) {
-    const latido = Math.pow(Math.max(0, Math.sin(t * 5.2)), 6);                         // pulso tipo Geiger
+    const latido = Math.pow(Math.max(0, Math.sin(t * 5.2)), 6), q = calidad(st, dt);    // pulso tipo Geiger
     g.globalCompositeOperation = 'source-over';
-    pinta(g, luz('rgba(140,255,60,.6)', 'rgba(60,220,40,.22)'), L + w / 2, T + h / 2, w * (1.25 + latido * .2), .45 + latido * .35);
+    aura(g, luz('rgba(140,255,60,.6)', 'rgba(60,220,40,.22)'), L + w / 2, T + h / 2, w * (1.3 + latido * .15), h * (5 + latido * 1.5), .45 + latido * .35);
     modo(g, oscuro);
     // ondas del contador
     st.onda = (st.onda ?? 0) - dt; if (st.onda <= 0) { st.onda = 1.1 + R() * .5; anillo(st, L + w / 2, T + h / 2, 'rgba(150,255,80,1)', .9); }
     // partículas verdes que flotan y titilan
     const motas = lista(st, 'motas');
-    if (R() < dt * 26) motas.push({ x: L + w * (.08 + R() * .84), y: T + h * .3, vx: (R() - .5) * 14, vy: -(14 + R() * 34), vida: 1, dura: 1.3 + R() * 1.2, f: R() * TAU, s: .8 + R() * 1.4 });
+    if (R() < dt * 26 * q) motas.push({ x: L + w * (.08 + R() * .84), y: T + h * .3, vx: (R() - .5) * 14, vy: -(14 + R() * 34), vida: 1, dura: 1.3 + R() * 1.2, f: R() * TAU, s: .8 + R() * 1.4 });
     avanzar(motas, dt, (p) => {
       p.x += (p.vx + Math.sin(t * 3 + p.f) * 10) * dt; p.y += p.vy * dt;
       const a = p.vida * (.55 + .45 * Math.sin(t * 14 + p.f));
@@ -211,7 +236,7 @@ const oroLiquido = {
   cols: ['#fff6c2', '#ffd95a', '#ffb81c'], ring: '#ffd95a', rate: 0,
   draw(g, st, L, T, w, h, t, oscuro, dt) {
     g.globalCompositeOperation = 'source-over';
-    pinta(g, luz('rgba(255,210,80,.45)', 'rgba(255,170,30,.15)'), L + w / 2, T + h / 2, w * 1.15, .6);
+    aura(g, luz('rgba(255,210,80,.45)', 'rgba(255,170,30,.15)'), L + w / 2, T + h / 2, w * 1.25, h * 4.5, .6);
     const gotas = lista(st, 'gotas');
     if (R() < dt * 3.2) gotas.push({ x: L + w * (.08 + R() * .84), y: T + h * .85, vy: 0, vida: 1, dura: 1.6, crece: 0, s: .8 + R() * .6 });
     avanzar(gotas, dt, (d) => {
@@ -243,7 +268,7 @@ const cristal = {
   draw(g, st, L, T, w, h, t, oscuro, dt) {
     if (!st.esq || st.esqW !== Math.round(w)) { st.esqW = Math.round(w); st.esq = Array.from({ length: Math.round(w / 14) }, (_, i) => ({ u: (i + .5) / Math.round(w / 14) + (R() - .5) * .03, alto: .6 + R() * 1.3, ang: (R() - .5) * .7, f: R() * TAU })); }
     g.globalCompositeOperation = 'source-over';
-    pinta(g, luz('rgba(190,235,255,.5)', 'rgba(150,200,255,.15)'), L + w / 2, T + h / 2, w * 1.1, .55);
+    aura(g, luz('rgba(190,235,255,.5)', 'rgba(150,200,255,.15)'), L + w / 2, T + h / 2, w * 1.2, h * 4.5, .55);
     for (const e of st.esq) {                                                       // esquirlas facetadas
       const x = L + w * e.u, H = h * e.alto * (1 + .06 * Math.sin(t * 2 + e.f)), W = h * .32;
       g.save(); g.translate(x, T + h * .2); g.rotate(e.ang);
@@ -267,9 +292,9 @@ const neon = {
   draw(g, st, L, T, w, h, t, oscuro, dt) {
     const falla = R() < .015 ? .25 : 1, hue = 300 + Math.sin(t * .6) * 40;
     g.globalCompositeOperation = 'source-over';
-    pinta(g, luz(`hsla(${hue},100%,60%,.7)`, `hsla(${hue},100%,50%,.2)`), L + w / 2, T + h / 2, w * 1.3, .55 * falla);
+    aura(g, luz(`hsla(${tono(hue)},100%,60%,.7)`, `hsla(${tono(hue)},100%,50%,.2)`), L + w / 2, T + h / 2, w * 1.3, h * 5, .55 * falla);
     modo(g, true);
-    for (let i = 0; i < 5; i++) { const u = ((t * (.6 + i * .17) + i * .23) % 1), x = L + h * .6 + (w - h * 1.2) * u; pinta(g, luz('rgba(255,255,255,1)', `hsla(${hue},100%,70%,.6)`), x, T + h / 2, h * 1.4, .9 * falla); }
+    for (let i = 0; i < 5; i++) { const u = ((t * (.6 + i * .17) + i * .23) % 1), x = L + h * .6 + (w - h * 1.2) * u; pinta(g, luz('rgba(255,255,255,1)', `hsla(${tono(hue)},100%,70%,.6)`), x, T + h / 2, h * 1.4, .9 * falla); }
     // reflejo en el «piso» (como un letrero sobre el agua)
     g.globalAlpha = .18 * falla; g.fillStyle = `hsl(${hue},100%,70%)`; g.fillRect(L + w * .1, T + h * 1.6, w * .8, h * .18);
     g.globalCompositeOperation = 'source-over'; anillos(g, st, dt, h);
@@ -284,7 +309,7 @@ const galaxia = {
     if (!st.orb) st.orb = Array.from({ length: 46 }, () => ({ a: R() * TAU, v: .6 + R() * 1.2, r: .55 + R() * .5, s: .6 + R() * 1.4, c: ['#ffffff', '#cdbbff', '#9fc4ff', '#ffb8e6'][Math.floor(R() * 4)] }));
     const cx = L + w / 2, cy = T + h / 2;
     g.globalCompositeOperation = 'source-over';
-    pinta(g, luz('rgba(140,100,255,.5)', 'rgba(255,100,200,.15)'), cx, cy, w * 1.2, .55);
+    aura(g, luz('rgba(140,100,255,.5)', 'rgba(255,100,200,.15)'), cx, cy, w * 1.25, h * 5, .55);
     modo(g, true);
     for (const o of st.orb) {
       o.a += o.v * dt; const x = cx + Math.cos(o.a) * w * .55 * o.r, y = cy + Math.sin(o.a) * h * 1.6 * o.r, delante = Math.sin(o.a) > 0;
@@ -304,7 +329,7 @@ const arcoiris = {
   cols: null, ring: '#ffe83b', rate: 0,
   draw(g, st, L, T, w, h, t, oscuro, dt) {
     g.globalCompositeOperation = 'source-over';
-    pinta(g, luz(`hsla(${(t * 60) % 360},100%,65%,.45)`, `hsla(${(t * 60 + 120) % 360},100%,60%,.15)`), L + w / 2, T + h / 2, w * 1.2, .6);
+    aura(g, luz(`hsla(${tono(t * 60)},100%,65%,.45)`, `hsla(${tono(t * 60 + 120)},100%,60%,.15)`), L + w / 2, T + h / 2, w * 1.25, h * 5, .6);
     modo(g, true); g.lineCap = 'round';
     for (let k = 0; k < 3; k++) {
       g.beginPath();
@@ -343,20 +368,24 @@ const holo = {
 };
 
 // Rey Midas: aura de oro, monedas acuñadas que saltan girando y brillos de corona.
+const MONEDA_PX = 48;
+const monedaSprite = (reverso) => sprite('moneda' + reverso, MONEDA_PX, (g, n) => {
+  const r = n / 2 - 1, c = n / 2;
+  const gr = g.createRadialGradient(c - r * .3, c - r * .3, r * .1, c, c, r); gr.addColorStop(0, '#fff6c2'); gr.addColorStop(.6, reverso ? '#e8a317' : '#ffd23a'); gr.addColorStop(1, '#a86a00');
+  g.fillStyle = gr; g.beginPath(); g.arc(c, c, r, 0, TAU); g.fill(); g.lineWidth = r * .14; g.strokeStyle = '#8a5a08'; g.stroke();
+  g.strokeStyle = 'rgba(255,248,210,.9)'; g.lineWidth = r * .08; g.beginPath(); g.arc(c, c, r * .66, 0, TAU); g.stroke();
+  g.fillStyle = '#8a5a08'; g.font = `900 ${r * 1.05}px system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('$', c, c + r * .05);
+});
+/** Moneda de oro que gira: la imagen prearmada (cara o reverso) se aplasta en x según el giro. */
 function moneda(g, x, y, r, giro) {
   const k = Math.cos(giro), sx = Math.max(.12, Math.abs(k));
-  g.save(); g.translate(x, y); g.scale(sx, 1);
-  const gr = g.createRadialGradient(-r * .3, -r * .3, r * .1, 0, 0, r); gr.addColorStop(0, '#fff6c2'); gr.addColorStop(.6, k > 0 ? '#ffd23a' : '#e8a317'); gr.addColorStop(1, '#a86a00');
-  g.fillStyle = gr; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill(); g.lineWidth = Math.max(1, r * .14); g.strokeStyle = '#8a5a08'; g.stroke();
-  g.strokeStyle = 'rgba(255,248,210,.9)'; g.lineWidth = Math.max(.7, r * .08); g.beginPath(); g.arc(0, 0, r * .66, 0, TAU); g.stroke();
-  if (sx > .45) { g.fillStyle = '#8a5a08'; g.font = `900 ${r * 1.05}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('$', 0, r * .05); }
-  g.restore();
+  g.drawImage(monedaSprite(k <= 0), x - r * sx, y - r, r * 2 * sx, r * 2);
 }
 const midas = {
   cols: ['#fff3b0', '#ffd23a', '#f0b020'], ring: '#ffd23a', rate: 0,
   draw(g, st, L, T, w, h, t, oscuro, dt) {
     g.globalCompositeOperation = 'source-over';
-    pinta(g, luz('rgba(255,215,90,.6)', 'rgba(255,180,30,.2)'), L + w / 2, T + h / 2, w * 1.3, .6 + .1 * Math.sin(t * 3));
+    aura(g, luz('rgba(255,215,90,.6)', 'rgba(255,180,30,.2)'), L + w / 2, T + h / 2, w * 1.3, h * 5, .6 + .1 * Math.sin(t * 3));
     const mon = lista(st, 'monedas');
     if (R() < dt * 4) mon.push({ x: L + w * (.1 + R() * .8), y: T, vx: (R() - .5) * 80, vy: -(160 + R() * 120), vida: 1, dura: .95, giro: R() * TAU, vg: 8 + R() * 8, r: h * (.45 + R() * .25) });
     avanzar(mon, dt, (m) => { m.vy += 560 * dt; m.x += m.vx * dt; m.y += m.vy * dt; m.giro += m.vg * dt; g.globalAlpha = Math.min(1, m.vida * 2.5); moneda(g, m.x, m.y, m.r, m.giro); });
@@ -372,7 +401,7 @@ const diamante = {
   cols: ['#ffffff', '#bfeaff', '#ffd1f2', '#fff3b8'], ring: '#bfeaff', rate: 0,
   draw(g, st, L, T, w, h, t, oscuro, dt) {
     g.globalCompositeOperation = 'source-over';
-    pinta(g, luz('rgba(200,235,255,.6)', 'rgba(170,190,255,.2)'), L + w / 2, T + h / 2, w * 1.2, .6);
+    aura(g, luz('rgba(200,235,255,.6)', 'rgba(170,190,255,.2)'), L + w / 2, T + h / 2, w * 1.25, h * 5, .6);
     modo(g, true);
     const cx = L + w * (.5 + Math.sin(t * .7) * .3);
     for (let i = 0; i < 7; i++) { const a = -Math.PI / 2 + (i - 3) * .16 + Math.sin(t) * .05, Lr = h * 5; g.globalAlpha = .28; g.fillStyle = `hsl(${i * 50},100%,70%)`; g.beginPath(); g.moveTo(cx, T); g.lineTo(cx + Math.cos(a - .03) * Lr, T + Math.sin(a - .03) * Lr); g.lineTo(cx + Math.cos(a + .03) * Lr, T + Math.sin(a + .03) * Lr); g.fill(); }

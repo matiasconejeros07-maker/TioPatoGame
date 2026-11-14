@@ -71,7 +71,7 @@ window.V2 = {
       ctl.datos.asegurar();
       setInterval(() => { if (api.session && cuenta.uid !== api.session.uid) ctl.datos.asegurar(); else if (!api.session && cuenta.uid) ctl.datos.asegurar(); }, 2000);
     }, 5000);
-    new Ambiente(); new Fondos(); registrarBarras(api.padFx);
+    new Ambiente(); window.__v2fondos = new Fondos(); registrarBarras(api.padFx);
   },
 
   get mode() { return prefs.modo; },

@@ -32,8 +32,8 @@ jobs:
       - name: El Worker de Cloudflare empaqueta
         working-directory: v2/server
         run: npx wrangler deploy --dry-run --outdir /tmp/worker
-      - name: El juego V2 (v2.js) está construido desde v2/*.js
+      - name: El juego V2 (v2.js y fondos-worker.js) está construido desde v2/*.js
         working-directory: v2/juego
         run: |
           node build-demo.mjs
-          git diff --exit-code v2.js
+          git diff --exit-code v2.js fondos-worker.js

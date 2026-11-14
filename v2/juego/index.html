@@ -4041,7 +4041,10 @@
     if (state !== 'play') return;
     if (paused) { last = now; requestAnimationFrame(loop); return; }   // celular en horizontal: pausa
     perfWatch(now - last);
-    const dt = Math.min((now - last) / 1000, .034); last = now;   // si la pestaña se oculta, el juego se pausa solo
+    // V2: el tiempo del juego sigue al reloj real aunque el teléfono dé menos cuadros (antes, con el tope de 0,034 s, bajo
+    // ~30 cuadros por segundo todo iba en cámara lenta). La física se parte en pasos de ≤10 px más abajo, así que un paso
+    // largo no atraviesa la barra. Un salto enorme (la app volvió del segundo plano) cuenta como un cuadro normal.
+    const raw = (now - last) / 1000, dt = raw > .25 ? 1 / 60 : Math.min(raw, .07); last = now;
     elapsed += dt;
     if (keyDir) px = clamp(px + keyDir * 760 * K * dt, pw / 2, W - pw / 2);
     const wantPw = padWidth();                                     // la barra se achica suavemente con cada rebote
